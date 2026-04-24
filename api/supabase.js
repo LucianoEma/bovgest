@@ -4,8 +4,8 @@
  * Substitua SUPABASE_URL e SUPABASE_ANON_KEY com suas credenciais
  */
 
-const SUPABASE_URL = 'https://SEU_PROJETO.supabase.co';
-const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANONIMA';
+const SUPABASE_URL = 'https://qqxxzrymmscqamqljmae.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHh6cnltbXNjcWFtcWxqbWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODM5MDksImV4cCI6MjA5MjU1OTkwOX0.kIwLs2Bmb9k9ZCC6vBxpoiW2SEZIeeOM0JUHIegA_ZU';
 
 /**
  * Realiza requisições autenticadas à API REST do Supabase
