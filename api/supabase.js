@@ -4,8 +4,13 @@
  * Substitua SUPABASE_URL e SUPABASE_ANON_KEY com suas credenciais
  */
 
-const SUPABASE_URL = 'https://qqxxzrymmscqamqljmae.supabase.co/rest/v1/';
+const SUPABASE_URL      = 'https://qqxxzrymmscqamqljmae.supabase.co/rest/v1/';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHh6cnltbXNjcWFtcWxqbWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODM5MDksImV4cCI6MjA5MjU1OTkwOX0.kIwLs2Bmb9k9ZCC6vBxpoiW2SEZIeeOM0JUHIegA_ZU';
+
+// ⚠️  A SERVICE ROLE KEY não fica aqui.
+// Ela é uma variável de ambiente configurada na Vercel e consumida
+// exclusivamente pela Serverless Function em /api-functions/create-user.js
+// O frontend chama /api/create-user e nunca toca na chave secreta.
 
 /**
  * Realiza requisições autenticadas à API REST do Supabase
@@ -241,6 +246,27 @@ async function getDashboardSummary() {
   };
 }
 
+/**
+ * ─── ADMIN: CRIAR USUÁRIO ─────────────────────────────────────────────────────
+ * Chama a Vercel Serverless Function /api/create-user.
+ * A SERVICE ROLE KEY nunca passa pelo frontend — fica só no servidor.
+ */
+async function adminCreateUser({ email, password, full_name, role, farm_name, phone }) {
+  const res = await fetch('/api/create-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, full_name, role, farm_name, phone }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || 'Erro ao criar usuário.');
+  }
+
+  return data;
+}
+
 // Exporta todas as funções para uso global
 window.SupabaseAPI = {
   // Auth
@@ -270,6 +296,8 @@ window.SupabaseAPI = {
   getProfile,
   updateProfile,
   getAllProfiles,
+  // Admin
+  adminCreateUser,
   // Analytics
   getDashboardSummary,
 };
