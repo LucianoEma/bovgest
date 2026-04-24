@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BovGest — Acesso</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="login-page">
+  <!-- Cover -->
+  <div class="login-cover">
+    <div class="login-cover__logo">Bov<span>Gest</span></div>
+    <p class="login-cover__tagline">Gestão inteligente de gado.<br>Do pasto à venda.</p>
+    <div class="login-cover__art">🐄</div>
+  </div>
+
+  <!-- Painel de login -->
+  <div class="login-panel">
+    <h1 class="login-panel__title">Bem-vindo de volta</h1>
+    <p class="login-panel__sub">Acesse sua conta para continuar</p>
+
+    <form class="login-form" id="login-form" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label" for="email">E-mail</label>
+        <input
+          class="form-input"
+          type="email"
+          id="email"
+          name="email"
+          placeholder="seu@email.com"
+          required
+          autocomplete="email"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Senha</label>
+        <input
+          class="form-input"
+          type="password"
+          id="password"
+          name="password"
+          placeholder="••••••••"
+          required
+          autocomplete="current-password"
+        />
+      </div>
+
+      <button class="btn btn-primary" type="submit" id="login-btn" style="width:100%;justify-content:center;margin-top:8px;">
+        Entrar
+      </button>
+
+      <div id="login-error" class="hidden" style="
+        margin-top:14px;
+        padding:10px 14px;
+        background:var(--danger-light);
+        color:var(--danger);
+        border-radius:var(--radius);
+        font-size:.85rem;
+      "></div>
+    </form>
+
+    <p class="login-footer">
+      BovGest v1.0 &mdash; Gestão de Gado
+    </p>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="api/supabase.js"></script>
+<script src="api/helpers.js"></script>
+<script>
+  // Redireciona se já estiver logado
+  document.addEventListener('DOMContentLoaded', () => {
+    if (SupabaseAPI.isAuthenticated()) {
+      window.location.href = 'dashboard.html';
+    }
+  });
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    errEl.classList.add('hidden');
+    Helpers.setLoading(btn, true);
+
+    try {
+      await SupabaseAPI.signIn(email, password);
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      errEl.textContent = err.message || 'Falha ao entrar. Verifique suas credenciais.';
+      errEl.classList.remove('hidden');
+    } finally {
+      Helpers.setLoading(btn, false, 'Entrar');
+    }
+  }
+</script>
+</body>
+</html>
