@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BovGest — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="sidebar__brand-icon">🐄</div>
+      <div>
+        <div class="sidebar__brand-name">BovGest</div>
+        <div class="sidebar__brand-sub">Gestão de Gado</div>
+      </div>
+    </div>
+
+    <nav class="sidebar__nav">
+      <span class="nav-label">Principal</span>
+      <a href="dashboard.html" class="nav-link active">
+        <span class="nav-link__icon">📊</span> Dashboard
+      </a>
+      <a href="#lotes" class="nav-link" onclick="showSection('lotes')">
+        <span class="nav-link__icon">🐮</span> Lotes
+      </a>
+      <a href="#custos" class="nav-link" onclick="showSection('custos')">
+        <span class="nav-link__icon">💸</span> Custos
+      </a>
+      <a href="#vendas" class="nav-link" onclick="showSection('vendas')">
+        <span class="nav-link__icon">💰</span> Vendas
+      </a>
+
+      <span class="nav-label">Configurações</span>
+      <a href="admin.html" class="nav-link">
+        <span class="nav-link__icon">⚙️</span> Administração
+      </a>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="sidebar__user" onclick="handleLogout()">
+        <div class="sidebar__avatar" id="user-avatar">—</div>
+        <div>
+          <div class="sidebar__username" id="user-name">Carregando...</div>
+          <div class="sidebar__role" id="user-role">usuário</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── HEADER ──────────────────────────────────────────────── -->
+  <header class="header">
+    <h1 class="header__title" id="page-title">Dashboard</h1>
+    <div class="header__actions">
+      <button class="btn btn-primary btn-sm" id="action-btn" onclick="openCreateModal()" style="display:none">
+        + Novo
+      </button>
+    </div>
+  </header>
+
+  <!-- ── MAIN ────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- SEÇÃO: DASHBOARD -->
+    <section id="section-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🐄</div>
+          <div class="stat-value" id="stat-animais">—</div>
+          <div class="stat-label">Total de Animais</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">📦</div>
+          <div class="stat-value" id="stat-lotes">—</div>
+          <div class="stat-label">Lotes Ativos</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">💸</div>
+          <div class="stat-value" id="stat-custos">—</div>
+          <div class="stat-label">Total em Custos</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value" id="stat-receita">—</div>
+          <div class="stat-label">Receita de Vendas</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Lotes recentes -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Lotes Recentes</span>
+            <button class="btn btn-ghost btn-sm" onclick="showSection('lotes')">Ver todos →</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Animais</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tb-dashboard-lotes">
+                  <tr><td colspan="3" class="table__empty">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumo financeiro -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Resultado Financeiro</span>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div>
+                <div style="font-size:.75rem;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Receita Total</div>
+                <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:700;" id="fin-receita" class="text-success">—</div>
+              </div>
+              <div>
+                <div style="font-size:.75rem;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Custo Total</div>
+                <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:700;" id="fin-custo" class="text-danger">—</div>
+              </div>
+              <div style="border-top:2px solid var(--border);padding-top:16px;">
+                <div style="font-size:.75rem;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Lucro Líquido</div>
+                <div style="font-family:var(--font-display);font-size:2rem;font-weight:700;" id="fin-lucro">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO: LOTES -->
+    <section id="section-lotes" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Lotes</h2>
+          <p class="page-subtitle">Gerencie seus lotes de gado</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-lote')">+ Novo Lote</button>
+      </div>
+
+      <div class="filter-bar">
+        <input class="form-input" type="search" placeholder="Buscar lote..." id="search-lotes" oninput="filterLotes()" />
+        <select class="form-select" id="filter-status-lotes" onchange="filterLotes()">
+          <option value="">Todos os status</option>
+          <option value="active">Ativo</option>
+          <option value="finished">Finalizado</option>
+          <option value="sold">Vendido</option>
+        </select>
+      </div>
+
+      <div id="lotes-grid" class="grid-auto">
+        <div class="empty-state">
+          <div class="empty-state__icon">🐮</div>
+          <div class="empty-state__title">Carregando lotes...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO: CUSTOS -->
+    <section id="section-custos" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Custos</h2>
+          <p class="page-subtitle">Registro de despesas por lote</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-custo')">+ Novo Custo</button>
+      </div>
+
+      <div class="filter-bar">
+        <select class="form-select" id="filter-lote-custo" onchange="loadCustos()">
+          <option value="">Todos os lotes</option>
+        </select>
+        <select class="form-select" id="filter-cat-custo" onchange="loadCustos()">
+          <option value="">Todas categorias</option>
+          <option value="alimentacao">Alimentação</option>
+          <option value="veterinario">Veterinário</option>
+          <option value="transporte">Transporte</option>
+          <option value="medicamento">Medicamento</option>
+          <option value="mao_de_obra">Mão de obra</option>
+          <option value="outros">Outros</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Lote</th>
+                  <th>Categoria</th>
+                  <th>Descrição</th>
+                  <th class="text-right">Valor</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tb-custos">
+                <tr><td colspan="6" class="table__empty">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO: VENDAS -->
+    <section id="section-vendas" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Vendas</h2>
+          <p class="page-subtitle">Registro de vendas de animais</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-venda')">+ Nova Venda</button>
+      </div>
+
+      <div class="filter-bar">
+        <select class="form-select" id="filter-lote-venda" onchange="loadVendas()">
+          <option value="">Todos os lotes</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Lote</th>
+                  <th>Qtd Animais</th>
+                  <th>Comprador</th>
+                  <th class="text-right">Valor Total</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tb-vendas">
+                <tr><td colspan="6" class="table__empty">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── MODAL: LOTE ───────────────────────────────────────────── -->
+<div class="modal" id="modal-lote">
+  <div class="modal__box">
+    <div class="modal__header">
+      <h2 class="modal__title" id="modal-lote-title">Novo Lote</h2>
+      <button class="modal__close" onclick="closeModal('modal-lote')">✕</button>
+    </div>
+    <div class="modal__body">
+      <form id="form-lote">
+        <input type="hidden" name="id" id="lote-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome do Lote *</label>
+            <input class="form-input" type="text" name="name" id="lote-name" placeholder="Ex: Lote Nelore A1" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Qtd de Animais *</label>
+            <input class="form-input" type="number" name="animal_count" id="lote-count" min="1" placeholder="50" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Raça</label>
+            <input class="form-input" type="text" name="breed" id="lote-breed" placeholder="Ex: Nelore" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status" id="lote-status">
+              <option value="active">Ativo</option>
+              <option value="finished">Finalizado</option>
+              <option value="sold">Vendido</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Data de Entrada</label>
+            <input class="form-input" type="date" name="entry_date" id="lote-entry" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Peso Médio Entrada (kg)</label>
+            <input class="form-input" type="number" name="avg_weight_entry" id="lote-weight" step="0.1" placeholder="350" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observações</label>
+          <textarea class="form-textarea" name="notes" id="lote-notes" placeholder="Informações adicionais..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-lote')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-lote">Salvar Lote</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: CUSTO ──────────────────────────────────────────── -->
+<div class="modal" id="modal-custo">
+  <div class="modal__box">
+    <div class="modal__header">
+      <h2 class="modal__title" id="modal-custo-title">Novo Custo</h2>
+      <button class="modal__close" onclick="closeModal('modal-custo')">✕</button>
+    </div>
+    <div class="modal__body">
+      <form id="form-custo">
+        <input type="hidden" name="id" id="custo-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Lote *</label>
+            <select class="form-select" name="lot_id" id="custo-lot" required>
+              <option value="">Selecione um lote</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoria *</label>
+            <select class="form-select" name="category" id="custo-cat" required>
+              <option value="">Selecione</option>
+              <option value="alimentacao">Alimentação</option>
+              <option value="veterinario">Veterinário</option>
+              <option value="transporte">Transporte</option>
+              <option value="medicamento">Medicamento</option>
+              <option value="mao_de_obra">Mão de obra</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Valor (R$) *</label>
+            <input class="form-input" type="number" name="amount" id="custo-amount" step="0.01" min="0" placeholder="0,00" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data *</label>
+            <input class="form-input" type="date" name="date" id="custo-date" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição</label>
+          <input class="form-input" type="text" name="description" id="custo-desc" placeholder="Detalhes do custo..." />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-custo')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-custo">Salvar Custo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: VENDA ──────────────────────────────────────────── -->
+<div class="modal" id="modal-venda">
+  <div class="modal__box">
+    <div class="modal__header">
+      <h2 class="modal__title" id="modal-venda-title">Nova Venda</h2>
+      <button class="modal__close" onclick="closeModal('modal-venda')">✕</button>
+    </div>
+    <div class="modal__body">
+      <form id="form-venda">
+        <input type="hidden" name="id" id="venda-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Lote *</label>
+            <select class="form-select" name="lot_id" id="venda-lot" required>
+              <option value="">Selecione um lote</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data da Venda *</label>
+            <input class="form-input" type="date" name="sale_date" id="venda-date" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Qtd Animais *</label>
+            <input class="form-input" type="number" name="animal_count" id="venda-count" min="1" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor Total (R$) *</label>
+            <input class="form-input" type="number" name="total_value" id="venda-value" step="0.01" min="0" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Comprador</label>
+          <input class="form-input" type="text" name="buyer_name" id="venda-buyer" placeholder="Nome do comprador" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observações</label>
+          <textarea class="form-textarea" name="notes" id="venda-notes" placeholder="Detalhes da venda..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-venda')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-venda">Registrar Venda</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="api/supabase.js"></script>
+<script src="api/helpers.js"></script>
+<script src="scripts.js"></script>
+</body>
+</html>
