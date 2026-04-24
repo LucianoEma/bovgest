@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BovGest — Administração</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="sidebar__brand-icon">🐄</div>
+      <div>
+        <div class="sidebar__brand-name">BovGest</div>
+        <div class="sidebar__brand-sub">Gestão de Gado</div>
+      </div>
+    </div>
+    <nav class="sidebar__nav">
+      <span class="nav-label">Principal</span>
+      <a href="dashboard.html" class="nav-link">
+        <span class="nav-link__icon">📊</span> Dashboard
+      </a>
+      <span class="nav-label">Configurações</span>
+      <a href="admin.html" class="nav-link active">
+        <span class="nav-link__icon">⚙️</span> Administração
+      </a>
+    </nav>
+    <div class="sidebar__footer">
+      <div class="sidebar__user" onclick="handleLogout()">
+        <div class="sidebar__avatar" id="user-avatar">—</div>
+        <div>
+          <div class="sidebar__username" id="user-name">Carregando...</div>
+          <div class="sidebar__role" id="user-role">admin</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Header -->
+  <header class="header">
+    <h1 class="header__title">Administração</h1>
+    <div class="header__actions">
+      <a href="dashboard.html" class="btn btn-secondary btn-sm">← Voltar</a>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+
+    <div class="admin-header">
+      <h1>⚙️ Painel Administrativo</h1>
+      <p>Gerencie usuários, perfis e configurações do sistema</p>
+    </div>
+
+    <!-- Abas -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('usuarios')">👥 Usuários</button>
+      <button class="tab" onclick="switchTab('meu-perfil')">👤 Meu Perfil</button>
+      <button class="tab" onclick="switchTab('sistema')">🛠 Sistema</button>
+    </div>
+
+    <!-- Tab: Usuários -->
+    <div id="tab-usuarios">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Usuários cadastrados</h2>
+          <p class="page-subtitle">Perfis de acesso ao sistema</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>E-mail</th>
+                  <th>Função</th>
+                  <th>Membro desde</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tb-usuarios">
+                <tr><td colspan="5" class="table__empty">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Meu Perfil -->
+    <div id="tab-meu-perfil" class="hidden">
+      <div class="page-header">
+        <h2 class="page-title">Meu Perfil</h2>
+      </div>
+      <div class="card" style="max-width:520px">
+        <div class="card-body">
+          <form id="form-perfil" onsubmit="handleSavePerfil(event)">
+            <div class="form-group">
+              <label class="form-label">Nome completo</label>
+              <input class="form-input" type="text" name="full_name" id="perfil-name" placeholder="Seu nome" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fazenda / Empresa</label>
+              <input class="form-input" type="text" name="farm_name" id="perfil-farm" placeholder="Nome da fazenda" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefone</label>
+              <input class="form-input" type="tel" name="phone" id="perfil-phone" placeholder="(00) 00000-0000" />
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="btn-save-perfil">Salvar alterações</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Sistema -->
+    <div id="tab-sistema" class="hidden">
+      <div class="page-header">
+        <h2 class="page-title">Informações do Sistema</h2>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📊 Estatísticas</span></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div class="d-flex align-center gap-8">
+                <span style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);flex:1">Total de Lotes</span>
+                <strong id="sys-lotes">—</strong>
+              </div>
+              <div class="d-flex align-center gap-8">
+                <span style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);flex:1">Total de Custos</span>
+                <strong id="sys-custos">—</strong>
+              </div>
+              <div class="d-flex align-center gap-8">
+                <span style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);flex:1">Total de Vendas</span>
+                <strong id="sys-vendas">—</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">🔧 Versão</span></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:8px;font-family:var(--font-mono);font-size:.82rem;color:var(--text-muted)">
+              <div><strong style="color:var(--text)">BovGest</strong> v1.0.0</div>
+              <div>Stack: HTML + CSS + JS puro</div>
+              <div>Backend: Supabase</div>
+              <div>Build: Produção</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px">
+        <button class="btn btn-danger btn-sm" onclick="handleLogout()">🚪 Sair do sistema</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal editar usuário -->
+<div class="modal" id="modal-edit-user">
+  <div class="modal__box">
+    <div class="modal__header">
+      <h2 class="modal__title">Editar Usuário</h2>
+      <button class="modal__close" onclick="closeModal('modal-edit-user')">✕</button>
+    </div>
+    <div class="modal__body">
+      <form id="form-edit-user">
+        <input type="hidden" name="id" id="edit-user-id" />
+        <div class="form-group">
+          <label class="form-label">Nome completo</label>
+          <input class="form-input" type="text" name="full_name" id="edit-user-name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Função</label>
+          <select class="form-select" name="role" id="edit-user-role">
+            <option value="user">Usuário</option>
+            <option value="admin">Administrador</option>
+            <option value="viewer">Visualizador</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-user')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="api/supabase.js"></script>
+<script src="api/helpers.js"></script>
+<script>
+  const { $, $$, formatDate, formatCurrency, showToast, openModal, closeModal,
+          setLoading, renderTable, requireAuth } = Helpers;
+
+  // ── INIT ────────────────────────────────────────────────────────────────────
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    requireAuth();
+    loadUserInfo();
+    await loadUsuarios();
+    await loadPerfil();
+    await loadSistema();
+  });
+
+  function loadUserInfo() {
+    const user = SupabaseAPI.getCurrentUser();
+    if (!user) return;
+    const name = user.user_metadata?.full_name || user.email || '—';
+    const initials = name.charAt(0).toUpperCase();
+    if ($('#user-avatar')) $('#user-avatar').textContent = initials;
+    if ($('#user-name')) $('#user-name').textContent = name;
+  }
+
+  // ── TABS ────────────────────────────────────────────────────────────────────
+
+  function switchTab(tab) {
+    $$('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    $$('[id^="tab-"]').forEach(s => s.classList.add('hidden'));
+    $(`#tab-${tab}`).classList.remove('hidden');
+  }
+
+  // ── USUÁRIOS ─────────────────────────────────────────────────────────────────
+
+  async function loadUsuarios() {
+    try {
+      const profiles = await SupabaseAPI.getAllProfiles();
+      const tbody = $('#tb-usuarios');
+      if (!profiles || profiles.length === 0) {
+        renderTable(tbody, []);
+        return;
+      }
+      const rows = profiles.map(p => {
+        const tr = document.createElement('tr');
+        const initials = (p.full_name || p.email || '?').charAt(0).toUpperCase();
+        tr.innerHTML = `
+          <td>
+            <div class="user-row">
+              <div class="user-row__avatar">${initials}</div>
+              <span>${p.full_name || '—'}</span>
+            </div>
+          </td>
+          <td class="text-mono" style="font-size:.82rem">${p.email || '—'}</td>
+          <td><span class="badge badge--gray">${p.role || 'user'}</span></td>
+          <td>${formatDate(p.created_at)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openEditUser(${JSON.stringify(p).replace(/"/g, '&quot;')})">✏️</button>
+          </td>
+        `;
+        return tr;
+      });
+      renderTable(tbody, rows);
+    } catch (err) {
+      showToast('Erro ao carregar usuários: ' + err.message, 'error');
+    }
+  }
+
+  function openEditUser(profile) {
+    $('#edit-user-id').value = profile.id;
+    $('#edit-user-name').value = profile.full_name || '';
+    $('#edit-user-role').value = profile.role || 'user';
+    openModal('modal-edit-user');
+  }
+
+  $('#form-edit-user').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = $('#edit-user-id').value;
+    const data = { full_name: $('#edit-user-name').value, role: $('#edit-user-role').value };
+    try {
+      await SupabaseAPI.updateProfile(data);
+      showToast('Usuário atualizado!', 'success');
+      closeModal('modal-edit-user');
+      loadUsuarios();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // ── MEU PERFIL ────────────────────────────────────────────────────────────────
+
+  async function loadPerfil() {
+    try {
+      const perfil = await SupabaseAPI.getProfile();
+      if (!perfil) return;
+      $('#perfil-name').value = perfil.full_name || '';
+      $('#perfil-farm').value = perfil.farm_name || '';
+      $('#perfil-phone').value = perfil.phone || '';
+    } catch (err) {
+      console.warn('Erro ao carregar perfil:', err.message);
+    }
+  }
+
+  async function handleSavePerfil(e) {
+    e.preventDefault();
+    const btn = $('#btn-save-perfil');
+    setLoading(btn, true);
+    try {
+      await SupabaseAPI.updateProfile({
+        full_name: $('#perfil-name').value,
+        farm_name: $('#perfil-farm').value,
+        phone: $('#perfil-phone').value,
+      });
+      showToast('Perfil salvo com sucesso!', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setLoading(btn, false, 'Salvar alterações');
+    }
+  }
+
+  // ── SISTEMA ──────────────────────────────────────────────────────────────────
+
+  async function loadSistema() {
+    try {
+      const summary = await SupabaseAPI.getDashboardSummary();
+      $('#sys-lotes').textContent = summary.totalLots;
+      $('#sys-custos').textContent = formatCurrency(summary.totalCosts);
+      $('#sys-vendas').textContent = formatCurrency(summary.totalRevenue);
+    } catch (err) {
+      console.warn('Erro ao carregar resumo do sistema:', err.message);
+    }
+  }
+
+  // ── LOGOUT ──────────────────────────────────────────────────────────────────
+
+  async function handleLogout() {
+    await SupabaseAPI.signOut();
+    window.location.href = 'index.html';
+  }
+</script>
+</body>
+</html>
