@@ -22,7 +22,7 @@
     <h1 class="login-panel__title">Bem-vindo de volta</h1>
     <p class="login-panel__sub">Acesse sua conta para continuar</p>
 
-    <form class="login-form" id="login-form">
+    <form class="login-form" id="login-form" onsubmit="return false;">
       <div class="form-group">
         <label class="form-label" for="email">E-mail</label>
         <input
@@ -51,12 +51,23 @@
 
       <button
         class="btn btn-primary"
-        type="submit"
+        type="button"
         id="login-btn"
+        onclick="handleLogin()"
         style="width:100%;justify-content:center;margin-top:8px;"
       >
         Entrar
       </button>
+
+      <!-- Enter no campo de senha também dispara o login -->
+      <script>
+        document.getElementById('password').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') handleLogin();
+        });
+        document.getElementById('email').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') handleLogin();
+        });
+      </script>
 
       <div
         id="login-error"
@@ -66,7 +77,7 @@
           padding:10px 14px;
           background:#fee2e2;
           color:#dc2626;
-          border-radius:var(--radius);
+          border-radius:var(--radius, 8px);
           font-size:.85rem;
           border:1px solid #fca5a5;
         "
@@ -80,39 +91,60 @@
 </div>
 
 <script src="api/supabase.js"></script>
-<script src="api/helpers.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Redireciona para o dashboard se já estiver autenticado
-    if (SupabaseAPI.isAuthenticated()) {
-      window.location.href = 'dashboard.html';
+  // Redireciona se já estiver logado
+  if (typeof SupabaseAPI !== 'undefined' && SupabaseAPI.isAuthenticated()) {
+    window.location.href = 'dashboard.html';
+  }
+
+  async function handleLogin() {
+    const btn   = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+      errEl.textContent   = 'Preencha e-mail e senha.';
+      errEl.style.display = 'block';
       return;
     }
 
-    const form   = document.getElementById('login-form');
-    const btn    = document.getElementById('login-btn');
-    const errEl  = document.getElementById('login-error');
+    // Desabilita botão
+    btn.disabled    = true;
+    btn.textContent = 'Entrando...';
+    errEl.style.display = 'none';
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const SUPABASE_URL      = 'https://qqxxzrymmscqamqljmae.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHh6cnltbXNjcWFtcWxqbWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODM5MDksImV4cCI6MjA5MjU1OTkwOX0.kIwLs2Bmb9k9ZCC6vBxpoiW2SEZIeeOM0JUHIegA_ZU';
 
-      const email    = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'apikey':       SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      errEl.style.display = 'none';
-      Helpers.setLoading(btn, true);
+      const data = await res.json();
 
-      try {
-        await SupabaseAPI.signIn(email, password);
-        window.location.href = 'dashboard.html';
-      } catch (err) {
-        errEl.textContent   = err.message || 'Falha ao entrar. Verifique suas credenciais.';
-        errEl.style.display = 'block';
-      } finally {
-        Helpers.setLoading(btn, false, 'Entrar');
+      if (!res.ok) {
+        throw new Error(data.error_description || data.msg || 'Credenciais inválidas.');
       }
-    });
-  });
+
+      // Salva sessão e redireciona
+      localStorage.setItem('bovgest_session', JSON.stringify(data));
+      window.location.href = 'dashboard.html';
+
+    } catch (err) {
+      errEl.textContent   = err.message || 'Falha ao entrar. Verifique suas credenciais.';
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Entrar';
+    }
+  }
 </script>
 </body>
 </html>
