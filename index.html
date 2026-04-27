@@ -9,19 +9,20 @@
 <body>
 
 <div class="login-page">
-  <!-- Cover -->
+
+  <!-- Coluna esquerda: visual -->
   <div class="login-cover">
     <div class="login-cover__logo">Bov<span>Gest</span></div>
     <p class="login-cover__tagline">Gestão inteligente de gado.<br>Do pasto à venda.</p>
     <div class="login-cover__art">🐄</div>
   </div>
 
-  <!-- Painel de login -->
+  <!-- Coluna direita: formulário -->
   <div class="login-panel">
     <h1 class="login-panel__title">Bem-vindo de volta</h1>
     <p class="login-panel__sub">Acesse sua conta para continuar</p>
 
-    <form class="login-form" id="login-form" onsubmit="handleLogin(event)">
+    <form class="login-form" id="login-form">
       <div class="form-group">
         <label class="form-label" for="email">E-mail</label>
         <input
@@ -48,18 +49,28 @@
         />
       </div>
 
-      <button class="btn btn-primary" type="submit" id="login-btn" style="width:100%;justify-content:center;margin-top:8px;">
+      <button
+        class="btn btn-primary"
+        type="submit"
+        id="login-btn"
+        style="width:100%;justify-content:center;margin-top:8px;"
+      >
         Entrar
       </button>
 
-      <div id="login-error" class="hidden" style="
-        margin-top:14px;
-        padding:10px 14px;
-        background:var(--danger-light);
-        color:var(--danger);
-        border-radius:var(--radius);
-        font-size:.85rem;
-      "></div>
+      <div
+        id="login-error"
+        style="
+          display:none;
+          margin-top:14px;
+          padding:10px 14px;
+          background:#fee2e2;
+          color:#dc2626;
+          border-radius:var(--radius);
+          font-size:.85rem;
+          border:1px solid #fca5a5;
+        "
+      ></div>
     </form>
 
     <p class="login-footer">
@@ -68,38 +79,40 @@
   </div>
 </div>
 
-<!-- Scripts -->
 <script src="api/supabase.js"></script>
 <script src="api/helpers.js"></script>
 <script>
-  // Redireciona se já estiver logado
   document.addEventListener('DOMContentLoaded', () => {
+    // Redireciona para o dashboard se já estiver autenticado
     if (SupabaseAPI.isAuthenticated()) {
       window.location.href = 'dashboard.html';
+      return;
     }
+
+    const form   = document.getElementById('login-form');
+    const btn    = document.getElementById('login-btn');
+    const errEl  = document.getElementById('login-error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      errEl.style.display = 'none';
+      Helpers.setLoading(btn, true);
+
+      try {
+        await SupabaseAPI.signIn(email, password);
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        errEl.textContent   = err.message || 'Falha ao entrar. Verifique suas credenciais.';
+        errEl.style.display = 'block';
+      } finally {
+        Helpers.setLoading(btn, false, 'Entrar');
+      }
+    });
   });
-
-  async function handleLogin(e) {
-    e.preventDefault();
-    const btn = document.getElementById('login-btn');
-    const errEl = document.getElementById('login-error');
-
-    const email    = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-
-    errEl.classList.add('hidden');
-    Helpers.setLoading(btn, true);
-
-    try {
-      await SupabaseAPI.signIn(email, password);
-      window.location.href = 'dashboard.html';
-    } catch (err) {
-      errEl.textContent = err.message || 'Falha ao entrar. Verifique suas credenciais.';
-      errEl.classList.remove('hidden');
-    } finally {
-      Helpers.setLoading(btn, false, 'Entrar');
-    }
-  }
 </script>
 </body>
 </html>
