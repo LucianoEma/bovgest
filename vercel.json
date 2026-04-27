@@ -1,8 +1,18 @@
 {
+  "version": 2,
   "rewrites": [
     {
       "source": "/api/create-user",
       "destination": "/api-functions/create-user.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/admin.html",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
     }
   ]
 }
