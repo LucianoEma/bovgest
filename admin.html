@@ -11,29 +11,28 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--bg);
+      background: var(--bg, #f5f0e8);
     }
     .adm-gate__box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e0d9ce);
+      border-radius: 16px;
       padding: 40px 48px;
       width: 100%;
       max-width: 420px;
-      box-shadow: var(--shadow-lg);
+      box-shadow: 0 8px 32px rgba(0,0,0,.1);
       text-align: center;
     }
     .adm-gate__icon { font-size: 3rem; margin-bottom: 12px; }
     .adm-gate__title {
-      font-family: var(--font-display);
       font-size: 1.4rem;
       font-weight: 700;
-      color: var(--text);
+      color: var(--text, #1a1a1a);
       margin-bottom: 6px;
     }
     .adm-gate__sub {
       font-size: .85rem;
-      color: var(--text-muted);
+      color: var(--text-muted, #888);
       margin-bottom: 28px;
     }
     .adm-gate__error {
@@ -41,7 +40,7 @@
       padding: 10px 14px;
       background: #fee2e2;
       color: #dc2626;
-      border-radius: var(--radius);
+      border-radius: 8px;
       font-size: .85rem;
       display: none;
     }
@@ -49,16 +48,16 @@
       display: block;
       margin-top: 20px;
       font-size: .82rem;
-      color: var(--text-muted);
+      color: var(--text-muted, #888);
       text-decoration: none;
     }
-    .adm-gate__back:hover { color: var(--primary); }
+    .adm-gate__back:hover { color: var(--primary, #c97d2e); }
 
-    #adm-panel { display: none; min-height: 100vh; background: var(--bg); }
+    #adm-panel { display: none; min-height: 100vh; background: var(--bg, #f5f0e8); }
 
     .adm-topbar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
+      background: var(--surface, #fff);
+      border-bottom: 1px solid var(--border, #e0d9ce);
       padding: 14px 32px;
       display: flex;
       align-items: center;
@@ -67,40 +66,36 @@
       gap: 12px;
     }
     .adm-topbar .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-family: var(--font-display);
       font-size: 1.1rem;
       font-weight: 700;
-      color: var(--text);
+      color: var(--text, #1a1a1a);
       text-decoration: none;
     }
-    .adm-topbar .brand em { color: var(--primary); font-style: normal; }
+    .adm-topbar .brand em { color: var(--primary, #c97d2e); font-style: normal; }
 
     .adm-body { padding: 32px; max-width: 720px; margin: 0 auto; }
 
     .adm-hero {
-      background: linear-gradient(135deg, var(--primary, #2563eb), #1e40af);
+      background: linear-gradient(135deg, #c97d2e, #a0621f);
       color: #fff;
-      border-radius: var(--radius-lg);
+      border-radius: 16px;
       padding: 28px 32px;
       margin-bottom: 28px;
     }
-    .adm-hero h1 { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin: 0 0 4px; }
+    .adm-hero h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 4px; }
     .adm-hero p  { margin: 0; opacity: .8; font-size: .9rem; }
 
     .create-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e0d9ce);
+      border-radius: 16px;
       padding: 32px;
     }
-    .create-card h2 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
-    .create-card > p { font-size: .85rem; color: var(--text-muted); margin: 0 0 24px; }
+    .create-card h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
+    .create-card > p { font-size: .85rem; color: var(--text-muted, #888); margin: 0 0 24px; }
 
     .msg-box {
-      border-radius: var(--radius);
+      border-radius: 8px;
       padding: 12px 16px;
       font-size: .88rem;
       margin-bottom: 16px;
@@ -121,7 +116,7 @@
 </head>
 <body>
 
-<!-- ── GATE: Tela de senha ─────────────────────────────────────── -->
+<!-- ── GATE: Tela de senha ─────────────────────────────────── -->
 <div class="adm-gate" id="adm-gate">
   <div class="adm-gate__box">
     <div class="adm-gate__icon">🔐</div>
@@ -133,7 +128,7 @@
       <input class="form-input" type="password" id="adm-pwd" placeholder="••••••••" autocomplete="off" />
     </div>
 
-    <button class="btn btn-primary" id="adm-unlock-btn" style="width:100%;justify-content:center;" onclick="unlockAdmin()">
+    <button class="btn btn-primary" id="adm-unlock-btn" type="button" style="width:100%;justify-content:center;" onclick="unlockAdmin()">
       Acessar Painel
     </button>
 
@@ -145,14 +140,14 @@
   </div>
 </div>
 
-<!-- ── PAINEL ADM ─────────────────────────────────────────────── -->
+<!-- ── PAINEL ADM ──────────────────────────────────────────── -->
 <div id="adm-panel">
   <div class="adm-topbar">
     <a href="dashboard.html" class="brand">🐄 Bov<em>Gest</em></a>
     <div style="display:flex;gap:10px;align-items:center;">
-      <span style="font-size:.8rem;color:var(--text-muted);">🔓 Painel Administrativo</span>
+      <span style="font-size:.8rem;color:var(--text-muted,#888);">🔓 Painel Administrativo</span>
       <a href="dashboard.html" class="btn btn-secondary btn-sm">← Dashboard</a>
-      <button class="btn btn-ghost btn-sm" onclick="lockAdmin()">🔒 Bloquear</button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="lockAdmin()">🔒 Bloquear</button>
     </div>
   </div>
 
@@ -169,15 +164,15 @@
       <div class="msg-box msg-box--success" id="msg-success"></div>
       <div class="msg-box msg-box--error"   id="msg-error"></div>
 
-      <form id="form-create-user" onsubmit="handleCreateUser(event)">
+      <form id="form-create-user" onsubmit="return false;">
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Nome completo *</label>
-            <input class="form-input" type="text" name="full_name" id="nu-name" placeholder="João da Silva" required />
+            <input class="form-input" type="text" id="nu-name" placeholder="João da Silva" required />
           </div>
           <div class="form-group">
             <label class="form-label">Função</label>
-            <select class="form-select" name="role" id="nu-role">
+            <select class="form-select" id="nu-role">
               <option value="user">Usuário</option>
               <option value="viewer">Visualizador</option>
             </select>
@@ -187,86 +182,84 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">E-mail *</label>
-            <input class="form-input" type="email" name="email" id="nu-email" placeholder="usuario@email.com" required />
+            <input class="form-input" type="email" id="nu-email" placeholder="usuario@email.com" required />
           </div>
           <div class="form-group">
             <label class="form-label">Senha *</label>
-            <input class="form-input" type="password" name="password" id="nu-password" placeholder="Mínimo 6 caracteres" required minlength="6" />
+            <input class="form-input" type="password" id="nu-password" placeholder="Mínimo 6 caracteres" minlength="6" required />
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Fazenda / Empresa</label>
-            <input class="form-input" type="text" name="farm_name" id="nu-farm" placeholder="Nome da fazenda" />
+            <input class="form-input" type="text" id="nu-farm" placeholder="Nome da fazenda" />
           </div>
           <div class="form-group">
             <label class="form-label">Telefone</label>
-            <input class="form-input" type="tel" name="phone" id="nu-phone" placeholder="(00) 00000-0000" />
+            <input class="form-input" type="tel" id="nu-phone" placeholder="(00) 00000-0000" />
           </div>
         </div>
 
         <div class="form-actions" style="margin-top:8px;">
-          <button type="reset" class="btn btn-secondary" onclick="clearMessages()">Limpar</button>
-          <button type="submit" class="btn btn-primary" id="btn-create-user">✚ Criar Usuário</button>
+          <button type="button" class="btn btn-secondary" onclick="clearForm()">Limpar</button>
+          <button type="button" class="btn btn-primary" id="btn-create-user" onclick="handleCreateUser()">✚ Criar Usuário</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<script src="api/supabase.js"></script>
-<script src="api/helpers.js"></script>
 <script>
-  // A senha real deve ser definida via variável de ambiente.
-  // Na Vercel: configure ADM_PASSWORD e injete via endpoint ou meta.
-  // Aqui usamos window.ADM_PASSWORD (pode ser definida por script
-  // no servidor) com fallback para 'admin123' em dev.
-  // ⚠️ Em produção: NUNCA deixe 'admin123'. Configure ADM_PASSWORD.
+  // ── CONFIGURAÇÃO ────────────────────────────────────────────
+  const SUPABASE_URL      = 'https://qqxxzrymmscqamqljmae.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHh6cnltbXNjcWFtcWxqbWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODM5MDksImV4cCI6MjA5MjU1OTkwOX0.kIwLs2Bmb9k9ZCC6vBxpoiW2SEZIeeOM0JUHIegA_ZU';
+  const SESSION_KEY       = 'bovgest_session';
+  const ADM_SESSION_KEY   = 'bovgest_adm_ok';
+
+  // Senha ADM: usa window.ADM_PASSWORD se definida, senão 'admin123'
   function getAdmPassword() {
     return (typeof window.ADM_PASSWORD !== 'undefined' && window.ADM_PASSWORD)
-      ? window.ADM_PASSWORD
-      : 'admin123';
+      ? window.ADM_PASSWORD : 'admin123';
   }
 
-  const SESSION_KEY = 'bovgest_adm_ok';
+  // ── INIT ────────────────────────────────────────────────────
+  (function init() {
+    // Verifica se há sessão salva (não redireciona, só mostra gate)
+    // Admin é acessível mesmo sem sessão de usuário comum
+    // (o gate de senha já protege o painel)
 
-  document.addEventListener('DOMContentLoaded', () => {
-    // Redireciona se não estiver logado no sistema
-    if (!window.SupabaseAPI?.isAuthenticated()) {
-      window.location.href = 'index.html';
-      return;
-    }
-    // Já desbloqueado nesta sessão?
-    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+    // Já desbloqueou nesta sessão de browser?
+    if (sessionStorage.getItem(ADM_SESSION_KEY) === '1') {
       showPanel();
     }
-    // Enter no input de senha
+
     document.getElementById('adm-pwd').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') unlockAdmin();
     });
-  });
+  })();
 
+  // ── UNLOCK / LOCK ───────────────────────────────────────────
   function unlockAdmin() {
     const input = document.getElementById('adm-pwd');
     const errEl = document.getElementById('adm-gate-error');
 
     if (input.value === getAdmPassword()) {
-      sessionStorage.setItem(SESSION_KEY, '1');
+      sessionStorage.setItem(ADM_SESSION_KEY, '1');
       errEl.style.display = 'none';
       showPanel();
     } else {
       errEl.style.display = 'block';
       input.value = '';
       input.classList.remove('shake');
-      void input.offsetWidth; // reflow para reiniciar animação
+      void input.offsetWidth;
       input.classList.add('shake');
       input.focus();
     }
   }
 
   function lockAdmin() {
-    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(ADM_SESSION_KEY);
     document.getElementById('adm-panel').style.display = 'none';
     document.getElementById('adm-gate').style.display  = 'flex';
     document.getElementById('adm-pwd').value = '';
@@ -277,36 +270,57 @@
     document.getElementById('adm-panel').style.display = 'block';
   }
 
-  async function handleCreateUser(e) {
-    e.preventDefault();
+  // ── CRIAR USUÁRIO ───────────────────────────────────────────
+  async function handleCreateUser() {
     clearMessages();
     const btn = document.getElementById('btn-create-user');
 
-    const payload = {
-      full_name: document.getElementById('nu-name').value.trim(),
-      email:     document.getElementById('nu-email').value.trim(),
-      password:  document.getElementById('nu-password').value,
-      role:      document.getElementById('nu-role').value,
-      farm_name: document.getElementById('nu-farm').value.trim(),
-      phone:     document.getElementById('nu-phone').value.trim(),
-    };
+    const full_name = document.getElementById('nu-name').value.trim();
+    const email     = document.getElementById('nu-email').value.trim();
+    const password  = document.getElementById('nu-password').value;
+    const role      = document.getElementById('nu-role').value;
+    const farm_name = document.getElementById('nu-farm').value.trim();
+    const phone     = document.getElementById('nu-phone').value.trim();
 
-    Helpers.setLoading(btn, true);
+    if (!full_name || !email || !password) {
+      showMsg('error', '✕ Preencha todos os campos obrigatórios.');
+      return;
+    }
+    if (password.length < 6) {
+      showMsg('error', '✕ A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Criando...';
+
     try {
-      await SupabaseAPI.adminCreateUser(payload);
-      showMsg('success', `✓ Usuário "${payload.full_name}" (${payload.email}) criado com sucesso!`);
-      e.target.reset();
+      const res = await fetch('/api/create-user', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, password, full_name, role, farm_name, phone }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar usuário.');
+
+      showMsg('success', `✓ Usuário "${full_name}" (${email}) criado com sucesso!`);
+      document.getElementById('form-create-user').reset();
+
     } catch (err) {
-      showMsg('error', '✕ ' + (err.message || 'Erro ao criar usuário.'));
+      showMsg('error', '✕ ' + (err.message || 'Erro desconhecido.'));
     } finally {
-      Helpers.setLoading(btn, false, '✚ Criar Usuário');
+      btn.disabled    = false;
+      btn.textContent = '✚ Criar Usuário';
     }
   }
 
+  // ── HELPERS ─────────────────────────────────────────────────
   function showMsg(type, text) {
-    const el = document.getElementById('msg-' + type);
+    const el    = document.getElementById('msg-' + type);
     const other = document.getElementById(type === 'success' ? 'msg-error' : 'msg-success');
-    el.textContent = text;
+    el.textContent   = text;
     el.style.display = 'block';
     other.style.display = 'none';
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -315,6 +329,11 @@
   function clearMessages() {
     document.getElementById('msg-success').style.display = 'none';
     document.getElementById('msg-error').style.display   = 'none';
+  }
+
+  function clearForm() {
+    document.getElementById('form-create-user').reset();
+    clearMessages();
   }
 </script>
 </body>
