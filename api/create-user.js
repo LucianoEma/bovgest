@@ -2,18 +2,21 @@
  * api-functions/create-user.js
  * Vercel Serverless Function — cria usuário via Supabase Admin API
  *
- * A SERVICE ROLE KEY fica SOMENTE aqui, no servidor.
- * O frontend nunca a vê. Ele chama /api/create-user e este arquivo responde.
- *
  * Variáveis de ambiente (configurar na Vercel):
- *   SUPABASE_URL          → https://SEU_PROJETO.supabase.co
- *   SUPABASE_SERVICE_KEY  → sua service_role key (secret)
+ *   SUPABASE_URL         → https://SEU_PROJETO.supabase.co
+ *   SUPABASE_SERVICE_KEY → sua service_role key (secreta, nunca exposta no frontend)
+ *   ADM_PASSWORD         → senha do painel administrativo
  */
 
 export default async function handler(req, res) {
-  // Só aceita POST
+  // CORS mínimo
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método não permitido' });
+    return res.status(405).json({ error: 'Método não permitido.' });
   }
 
   const SUPABASE_URL         = process.env.SUPABASE_URL;
@@ -25,9 +28,9 @@ export default async function handler(req, res) {
     });
   }
 
-  const { email, password, full_name, role, farm_name, phone } = req.body;
+  const { email, password, full_name, role, farm_name, phone } = req.body || {};
 
-  // Validações básicas no servidor
+  // Validações básicas
   if (!email || !password) {
     return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
   }
@@ -36,9 +39,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Cria o usuário via Auth Admin API do Supabase
+    // 1. Cria o usuário via Supabase Auth Admin API
     const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-      method: 'POST',
+      method:  'POST',
       headers: {
         'apikey':        SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -48,7 +51,10 @@ export default async function handler(req, res) {
         email,
         password,
         email_confirm: true,
-        user_metadata: { full_name, role },
+        user_metadata: {
+          full_name: full_name || '',
+          role:      role      || 'user',
+        },
       }),
     });
 
@@ -60,12 +66,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const user = authData.user || authData;
+    const userId = authData?.id || authData?.user?.id;
 
-    // 2. Atualiza o perfil com dados extras (trigger cria o registro base)
-    if (user?.id) {
-      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
-        method: 'PATCH',
+    // 2. Atualiza o perfil com dados extras
+    // (O trigger do Supabase cria a linha base em 'profiles' ao criar o auth user)
+    if (userId) {
+      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
+        method:  'PATCH',
         headers: {
           'apikey':        SUPABASE_SERVICE_KEY,
           'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -82,7 +89,7 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ success: true, user_id: user.id });
+    return res.status(200).json({ success: true, user_id: userId });
 
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Erro interno no servidor.' });
