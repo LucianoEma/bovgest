@@ -5,12 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BovGest — Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── GRÁFICOS / RELATÓRIOS ──────────────────────────────────── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+    }
+    .chart-card__title {
+      font-family: var(--font-display);
+      font-size: .92rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .chart-card__sub {
+      font-size: .78rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .chart-wrap {
+      width: 100%;
+      height: 220px;
+      position: relative;
+    }
+
+    /* Barra simples SVG */
+    .bar-chart { width: 100%; height: 100%; }
+
+    .kpi-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      flex: 1;
+      min-width: 160px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .kpi-card__label {
+      font-size: .75rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 6px;
+    }
+    .kpi-card__value {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .kpi-card__sub {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Donut SVG simples */
+    .donut-wrap { display: flex; align-items: center; gap: 24px; }
+    .donut-legend { display: flex; flex-direction: column; gap: 8px; font-size: .8rem; }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  </style>
 </head>
 <body>
 
 <div class="app-layout">
 
-  <!-- ── SIDEBAR ─────────────────────────────────────────────── -->
+  <!-- ── SIDEBAR ─────────────────────────────────────────────────── -->
   <aside class="sidebar">
     <div class="sidebar__brand">
       <div class="sidebar__brand-icon">🐄</div>
@@ -22,17 +97,21 @@
 
     <nav class="sidebar__nav">
       <span class="nav-label">Principal</span>
-      <a href="dashboard.html" class="nav-link active">
+
+      <a href="#" class="nav-link active" id="nav-dashboard" onclick="showSection('dashboard'); return false;">
         <span class="nav-link__icon">📊</span> Dashboard
       </a>
-      <a href="#lotes" class="nav-link" onclick="showSection('lotes')">
+      <a href="#" class="nav-link" id="nav-lotes" onclick="showSection('lotes'); return false;">
         <span class="nav-link__icon">🐮</span> Lotes
       </a>
-      <a href="#custos" class="nav-link" onclick="showSection('custos')">
+      <a href="#" class="nav-link" id="nav-custos" onclick="showSection('custos'); return false;">
         <span class="nav-link__icon">💸</span> Custos
       </a>
-      <a href="#vendas" class="nav-link" onclick="showSection('vendas')">
+      <a href="#" class="nav-link" id="nav-vendas" onclick="showSection('vendas'); return false;">
         <span class="nav-link__icon">💰</span> Vendas
+      </a>
+      <a href="#" class="nav-link" id="nav-relatorios" onclick="showSection('relatorios'); return false;">
+        <span class="nav-link__icon">📈</span> Relatórios
       </a>
 
       <span class="nav-label">Configurações</span>
@@ -52,7 +131,7 @@
     </div>
   </aside>
 
-  <!-- ── HEADER ──────────────────────────────────────────────── -->
+  <!-- ── HEADER ────────────────────────────────────────────────── -->
   <header class="header">
     <h1 class="header__title" id="page-title">Dashboard</h1>
     <div class="header__actions">
@@ -62,7 +141,7 @@
     </div>
   </header>
 
-  <!-- ── MAIN ────────────────────────────────────────────────── -->
+  <!-- ── MAIN ──────────────────────────────────────────────────── -->
   <main class="main">
 
     <!-- SEÇÃO: DASHBOARD -->
@@ -255,10 +334,86 @@
       </div>
     </section>
 
+    <!-- SEÇÃO: RELATÓRIOS -->
+    <section id="section-relatorios" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Relatórios</h2>
+          <p class="page-subtitle">Análises e indicadores para tomada de decisão</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadRelatorios()">↻ Atualizar</button>
+      </div>
+
+      <!-- KPIs principais -->
+      <div class="kpi-row" id="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-card__label">Margem de Lucro</div>
+          <div class="kpi-card__value" id="kpi-margem">—</div>
+          <div class="kpi-card__sub">Receita vs Custo</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card__label">Custo por Animal</div>
+          <div class="kpi-card__value" id="kpi-custo-animal">—</div>
+          <div class="kpi-card__sub">Média do rebanho</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card__label">Receita por Animal</div>
+          <div class="kpi-card__value" id="kpi-receita-animal">—</div>
+          <div class="kpi-card__sub">Nas vendas realizadas</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card__label">Lucro por Animal</div>
+          <div class="kpi-card__value" id="kpi-lucro-animal">—</div>
+          <div class="kpi-card__sub">Resultado final</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <!-- Gráfico: Custos por categoria -->
+        <div class="chart-card">
+          <div class="chart-card__title">🥧 Custos por Categoria</div>
+          <div class="chart-card__sub">Distribuição percentual das despesas</div>
+          <div class="chart-wrap">
+            <div class="donut-wrap" id="donut-categorias" style="height:100%;align-items:center;">
+              <svg id="donut-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
+              <div class="donut-legend" id="donut-legend"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfico: Receita vs Custo por lote -->
+        <div class="chart-card">
+          <div class="chart-card__title">📊 Receita vs Custo por Lote</div>
+          <div class="chart-card__sub">Top 6 lotes com movimentação</div>
+          <div class="chart-wrap">
+            <svg id="bar-lotes" class="bar-chart" viewBox="0 0 360 200" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
+        <!-- Gráfico: Evolução de custos (linha) -->
+        <div class="chart-card">
+          <div class="chart-card__title">📉 Evolução de Custos</div>
+          <div class="chart-card__sub">Últimos 6 meses</div>
+          <div class="chart-wrap">
+            <svg id="line-custos" class="bar-chart" viewBox="0 0 360 200" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
+        <!-- Gráfico: Animais por status -->
+        <div class="chart-card">
+          <div class="chart-card__title">🐄 Lotes por Status</div>
+          <div class="chart-card__sub">Situação atual do rebanho</div>
+          <div class="chart-wrap">
+            <svg id="bar-status" class="bar-chart" viewBox="0 0 360 200" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
-<!-- ── MODAL: LOTE ───────────────────────────────────────────── -->
+<!-- ── MODAL: LOTE ──────────────────────────────────────────────── -->
 <div class="modal" id="modal-lote">
   <div class="modal__box">
     <div class="modal__header">
@@ -315,7 +470,7 @@
   </div>
 </div>
 
-<!-- ── MODAL: CUSTO ──────────────────────────────────────────── -->
+<!-- ── MODAL: CUSTO ─────────────────────────────────────────────── -->
 <div class="modal" id="modal-custo">
   <div class="modal__box">
     <div class="modal__header">
@@ -368,7 +523,7 @@
   </div>
 </div>
 
-<!-- ── MODAL: VENDA ──────────────────────────────────────────── -->
+<!-- ── MODAL: VENDA ─────────────────────────────────────────────── -->
 <div class="modal" id="modal-venda">
   <div class="modal__box">
     <div class="modal__header">
