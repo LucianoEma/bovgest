@@ -5,195 +5,210 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BovGest — Administração</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .adm-gate {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+    .adm-gate__box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 48px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+    }
+    .adm-gate__icon { font-size: 3rem; margin-bottom: 12px; }
+    .adm-gate__title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .adm-gate__sub {
+      font-size: .85rem;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+    .adm-gate__error {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fee2e2;
+      color: #dc2626;
+      border-radius: var(--radius);
+      font-size: .85rem;
+      display: none;
+    }
+    .adm-gate__back {
+      display: block;
+      margin-top: 20px;
+      font-size: .82rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .adm-gate__back:hover { color: var(--primary); }
+
+    #adm-panel { display: none; min-height: 100vh; background: var(--bg); }
+
+    .adm-topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .adm-topbar .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .adm-topbar .brand em { color: var(--primary); font-style: normal; }
+
+    .adm-body { padding: 32px; max-width: 720px; margin: 0 auto; }
+
+    .adm-hero {
+      background: linear-gradient(135deg, var(--primary, #2563eb), #1e40af);
+      color: #fff;
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      margin-bottom: 28px;
+    }
+    .adm-hero h1 { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin: 0 0 4px; }
+    .adm-hero p  { margin: 0; opacity: .8; font-size: .9rem; }
+
+    .create-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+    }
+    .create-card h2 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
+    .create-card > p { font-size: .85rem; color: var(--text-muted); margin: 0 0 24px; }
+
+    .msg-box {
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: .88rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .msg-box--success { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
+    .msg-box--error   { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-8px); }
+      40%      { transform: translateX(8px); }
+      60%      { transform: translateX(-5px); }
+      80%      { transform: translateX(5px); }
+    }
+    .shake { animation: shake .35s ease; }
+  </style>
 </head>
 <body>
 
-<div class="app-layout">
+<!-- ── GATE: Tela de senha ─────────────────────────────────────── -->
+<div class="adm-gate" id="adm-gate">
+  <div class="adm-gate__box">
+    <div class="adm-gate__icon">🔐</div>
+    <div class="adm-gate__title">Acesso Restrito</div>
+    <div class="adm-gate__sub">Área exclusiva para administradores.<br>Informe a senha para continuar.</div>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar__brand">
-      <div class="sidebar__brand-icon">🐄</div>
-      <div>
-        <div class="sidebar__brand-name">BovGest</div>
-        <div class="sidebar__brand-sub">Gestão de Gado</div>
-      </div>
-    </div>
-    <nav class="sidebar__nav">
-      <span class="nav-label">Principal</span>
-      <a href="dashboard.html" class="nav-link">
-        <span class="nav-link__icon">📊</span> Dashboard
-      </a>
-      <span class="nav-label">Configurações</span>
-      <a href="admin.html" class="nav-link active">
-        <span class="nav-link__icon">⚙️</span> Administração
-      </a>
-    </nav>
-    <div class="sidebar__footer">
-      <div class="sidebar__user" onclick="handleLogout()">
-        <div class="sidebar__avatar" id="user-avatar">—</div>
-        <div>
-          <div class="sidebar__username" id="user-name">Carregando...</div>
-          <div class="sidebar__role" id="user-role">admin</div>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Header -->
-  <header class="header">
-    <h1 class="header__title">Administração</h1>
-    <div class="header__actions">
-      <a href="dashboard.html" class="btn btn-secondary btn-sm">← Voltar</a>
-    </div>
-  </header>
-
-  <!-- Main -->
-  <main class="main">
-
-    <div class="admin-header">
-      <h1>⚙️ Painel Administrativo</h1>
-      <p>Gerencie usuários, perfis e configurações do sistema</p>
+    <div class="form-group" style="text-align:left;">
+      <label class="form-label">Senha do Administrador</label>
+      <input class="form-input" type="password" id="adm-pwd" placeholder="••••••••" autocomplete="off" />
     </div>
 
-    <!-- Abas -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('usuarios')">👥 Usuários</button>
-      <button class="tab" onclick="switchTab('meu-perfil')">👤 Meu Perfil</button>
-      <button class="tab" onclick="switchTab('sistema')">🛠 Sistema</button>
+    <button class="btn btn-primary" id="adm-unlock-btn" style="width:100%;justify-content:center;" onclick="unlockAdmin()">
+      Acessar Painel
+    </button>
+
+    <div class="adm-gate__error" id="adm-gate-error">
+      Senha incorreta. Verifique e tente novamente.
     </div>
 
-    <!-- Tab: Usuários -->
-    <div id="tab-usuarios">
-      <div class="page-header">
-        <div>
-          <h2 class="page-title">Usuários cadastrados</h2>
-          <p class="page-subtitle">Perfis de acesso ao sistema</p>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-body" style="padding:0">
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Usuário</th>
-                  <th>E-mail</th>
-                  <th>Função</th>
-                  <th>Membro desde</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="tb-usuarios">
-                <tr><td colspan="5" class="table__empty">Carregando...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab: Meu Perfil -->
-    <div id="tab-meu-perfil" class="hidden">
-      <div class="page-header">
-        <h2 class="page-title">Meu Perfil</h2>
-      </div>
-      <div class="card" style="max-width:520px">
-        <div class="card-body">
-          <form id="form-perfil" onsubmit="handleSavePerfil(event)">
-            <div class="form-group">
-              <label class="form-label">Nome completo</label>
-              <input class="form-input" type="text" name="full_name" id="perfil-name" placeholder="Seu nome" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Fazenda / Empresa</label>
-              <input class="form-input" type="text" name="farm_name" id="perfil-farm" placeholder="Nome da fazenda" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Telefone</label>
-              <input class="form-input" type="tel" name="phone" id="perfil-phone" placeholder="(00) 00000-0000" />
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary" id="btn-save-perfil">Salvar alterações</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab: Sistema -->
-    <div id="tab-sistema" class="hidden">
-      <div class="page-header">
-        <h2 class="page-title">Informações do Sistema</h2>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header"><span class="card-title">📊 Estatísticas</span></div>
-          <div class="card-body">
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              <div class="d-flex align-center gap-8">
-                <span style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);flex:1">Total de Lotes</span>
-                <strong id="sys-lotes">—</strong>
-              </div>
-              <div class="d-flex align-center gap-8">
-                <span style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);flex:1">Total de Custos</span>
-                <strong id="sys-custos">—</strong>
-              </div>
-              <div class="d-flex align-center gap-8">
-                <span style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);flex:1">Total de Vendas</span>
-                <strong id="sys-vendas">—</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><span class="card-title">🔧 Versão</span></div>
-          <div class="card-body">
-            <div style="display:flex;flex-direction:column;gap:8px;font-family:var(--font-mono);font-size:.82rem;color:var(--text-muted)">
-              <div><strong style="color:var(--text)">BovGest</strong> v1.0.0</div>
-              <div>Stack: HTML + CSS + JS puro</div>
-              <div>Backend: Supabase</div>
-              <div>Build: Produção</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:20px">
-        <button class="btn btn-danger btn-sm" onclick="handleLogout()">🚪 Sair do sistema</button>
-      </div>
-    </div>
-
-  </main>
+    <a href="dashboard.html" class="adm-gate__back">← Voltar ao Dashboard</a>
+  </div>
 </div>
 
-<!-- Modal editar usuário -->
-<div class="modal" id="modal-edit-user">
-  <div class="modal__box">
-    <div class="modal__header">
-      <h2 class="modal__title">Editar Usuário</h2>
-      <button class="modal__close" onclick="closeModal('modal-edit-user')">✕</button>
+<!-- ── PAINEL ADM ─────────────────────────────────────────────── -->
+<div id="adm-panel">
+  <div class="adm-topbar">
+    <a href="dashboard.html" class="brand">🐄 Bov<em>Gest</em></a>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span style="font-size:.8rem;color:var(--text-muted);">🔓 Painel Administrativo</span>
+      <a href="dashboard.html" class="btn btn-secondary btn-sm">← Dashboard</a>
+      <button class="btn btn-ghost btn-sm" onclick="lockAdmin()">🔒 Bloquear</button>
     </div>
-    <div class="modal__body">
-      <form id="form-edit-user">
-        <input type="hidden" name="id" id="edit-user-id" />
-        <div class="form-group">
-          <label class="form-label">Nome completo</label>
-          <input class="form-input" type="text" name="full_name" id="edit-user-name" />
+  </div>
+
+  <div class="adm-body">
+    <div class="adm-hero">
+      <h1>⚙️ Painel Administrativo</h1>
+      <p>Gerencie os usuários com acesso ao sistema BovGest.</p>
+    </div>
+
+    <div class="create-card">
+      <h2>👤 Criar Novo Usuário</h2>
+      <p>Preencha os dados abaixo para criar um novo acesso ao sistema.</p>
+
+      <div class="msg-box msg-box--success" id="msg-success"></div>
+      <div class="msg-box msg-box--error"   id="msg-error"></div>
+
+      <form id="form-create-user" onsubmit="handleCreateUser(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome completo *</label>
+            <input class="form-input" type="text" name="full_name" id="nu-name" placeholder="João da Silva" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Função</label>
+            <select class="form-select" name="role" id="nu-role">
+              <option value="user">Usuário</option>
+              <option value="viewer">Visualizador</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Função</label>
-          <select class="form-select" name="role" id="edit-user-role">
-            <option value="user">Usuário</option>
-            <option value="admin">Administrador</option>
-            <option value="viewer">Visualizador</option>
-          </select>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">E-mail *</label>
+            <input class="form-input" type="email" name="email" id="nu-email" placeholder="usuario@email.com" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Senha *</label>
+            <input class="form-input" type="password" name="password" id="nu-password" placeholder="Mínimo 6 caracteres" required minlength="6" />
+          </div>
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-user')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar</button>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fazenda / Empresa</label>
+            <input class="form-input" type="text" name="farm_name" id="nu-farm" placeholder="Nome da fazenda" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telefone</label>
+            <input class="form-input" type="tel" name="phone" id="nu-phone" placeholder="(00) 00000-0000" />
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top:8px;">
+          <button type="reset" class="btn btn-secondary" onclick="clearMessages()">Limpar</button>
+          <button type="submit" class="btn btn-primary" id="btn-create-user">✚ Criar Usuário</button>
         </div>
       </form>
     </div>
@@ -203,143 +218,103 @@
 <script src="api/supabase.js"></script>
 <script src="api/helpers.js"></script>
 <script>
-  const { $, $$, formatDate, formatCurrency, showToast, openModal, closeModal,
-          setLoading, renderTable, requireAuth } = Helpers;
+  // A senha real deve ser definida via variável de ambiente.
+  // Na Vercel: configure ADM_PASSWORD e injete via endpoint ou meta.
+  // Aqui usamos window.ADM_PASSWORD (pode ser definida por script
+  // no servidor) com fallback para 'admin123' em dev.
+  // ⚠️ Em produção: NUNCA deixe 'admin123'. Configure ADM_PASSWORD.
+  function getAdmPassword() {
+    return (typeof window.ADM_PASSWORD !== 'undefined' && window.ADM_PASSWORD)
+      ? window.ADM_PASSWORD
+      : 'admin123';
+  }
 
-  // ── INIT ────────────────────────────────────────────────────────────────────
+  const SESSION_KEY = 'bovgest_adm_ok';
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    requireAuth();
-    loadUserInfo();
-    await loadUsuarios();
-    await loadPerfil();
-    await loadSistema();
+  document.addEventListener('DOMContentLoaded', () => {
+    // Redireciona se não estiver logado no sistema
+    if (!window.SupabaseAPI?.isAuthenticated()) {
+      window.location.href = 'index.html';
+      return;
+    }
+    // Já desbloqueado nesta sessão?
+    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+      showPanel();
+    }
+    // Enter no input de senha
+    document.getElementById('adm-pwd').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') unlockAdmin();
+    });
   });
 
-  function loadUserInfo() {
-    const user = SupabaseAPI.getCurrentUser();
-    if (!user) return;
-    const name = user.user_metadata?.full_name || user.email || '—';
-    const initials = name.charAt(0).toUpperCase();
-    if ($('#user-avatar')) $('#user-avatar').textContent = initials;
-    if ($('#user-name')) $('#user-name').textContent = name;
-  }
+  function unlockAdmin() {
+    const input = document.getElementById('adm-pwd');
+    const errEl = document.getElementById('adm-gate-error');
 
-  // ── TABS ────────────────────────────────────────────────────────────────────
-
-  function switchTab(tab) {
-    $$('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
-    $$('[id^="tab-"]').forEach(s => s.classList.add('hidden'));
-    $(`#tab-${tab}`).classList.remove('hidden');
-  }
-
-  // ── USUÁRIOS ─────────────────────────────────────────────────────────────────
-
-  async function loadUsuarios() {
-    try {
-      const profiles = await SupabaseAPI.getAllProfiles();
-      const tbody = $('#tb-usuarios');
-      if (!profiles || profiles.length === 0) {
-        renderTable(tbody, []);
-        return;
-      }
-      const rows = profiles.map(p => {
-        const tr = document.createElement('tr');
-        const initials = (p.full_name || p.email || '?').charAt(0).toUpperCase();
-        tr.innerHTML = `
-          <td>
-            <div class="user-row">
-              <div class="user-row__avatar">${initials}</div>
-              <span>${p.full_name || '—'}</span>
-            </div>
-          </td>
-          <td class="text-mono" style="font-size:.82rem">${p.email || '—'}</td>
-          <td><span class="badge badge--gray">${p.role || 'user'}</span></td>
-          <td>${formatDate(p.created_at)}</td>
-          <td>
-            <button class="btn btn-ghost btn-sm" onclick="openEditUser(${JSON.stringify(p).replace(/"/g, '&quot;')})">✏️</button>
-          </td>
-        `;
-        return tr;
-      });
-      renderTable(tbody, rows);
-    } catch (err) {
-      showToast('Erro ao carregar usuários: ' + err.message, 'error');
+    if (input.value === getAdmPassword()) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      errEl.style.display = 'none';
+      showPanel();
+    } else {
+      errEl.style.display = 'block';
+      input.value = '';
+      input.classList.remove('shake');
+      void input.offsetWidth; // reflow para reiniciar animação
+      input.classList.add('shake');
+      input.focus();
     }
   }
 
-  function openEditUser(profile) {
-    $('#edit-user-id').value = profile.id;
-    $('#edit-user-name').value = profile.full_name || '';
-    $('#edit-user-role').value = profile.role || 'user';
-    openModal('modal-edit-user');
+  function lockAdmin() {
+    sessionStorage.removeItem(SESSION_KEY);
+    document.getElementById('adm-panel').style.display = 'none';
+    document.getElementById('adm-gate').style.display  = 'flex';
+    document.getElementById('adm-pwd').value = '';
   }
 
-  $('#form-edit-user').addEventListener('submit', async (e) => {
+  function showPanel() {
+    document.getElementById('adm-gate').style.display  = 'none';
+    document.getElementById('adm-panel').style.display = 'block';
+  }
+
+  async function handleCreateUser(e) {
     e.preventDefault();
-    const id = $('#edit-user-id').value;
-    const data = { full_name: $('#edit-user-name').value, role: $('#edit-user-role').value };
-    try {
-      await SupabaseAPI.updateProfile(data);
-      showToast('Usuário atualizado!', 'success');
-      closeModal('modal-edit-user');
-      loadUsuarios();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  });
+    clearMessages();
+    const btn = document.getElementById('btn-create-user');
 
-  // ── MEU PERFIL ────────────────────────────────────────────────────────────────
+    const payload = {
+      full_name: document.getElementById('nu-name').value.trim(),
+      email:     document.getElementById('nu-email').value.trim(),
+      password:  document.getElementById('nu-password').value,
+      role:      document.getElementById('nu-role').value,
+      farm_name: document.getElementById('nu-farm').value.trim(),
+      phone:     document.getElementById('nu-phone').value.trim(),
+    };
 
-  async function loadPerfil() {
+    Helpers.setLoading(btn, true);
     try {
-      const perfil = await SupabaseAPI.getProfile();
-      if (!perfil) return;
-      $('#perfil-name').value = perfil.full_name || '';
-      $('#perfil-farm').value = perfil.farm_name || '';
-      $('#perfil-phone').value = perfil.phone || '';
+      await SupabaseAPI.adminCreateUser(payload);
+      showMsg('success', `✓ Usuário "${payload.full_name}" (${payload.email}) criado com sucesso!`);
+      e.target.reset();
     } catch (err) {
-      console.warn('Erro ao carregar perfil:', err.message);
-    }
-  }
-
-  async function handleSavePerfil(e) {
-    e.preventDefault();
-    const btn = $('#btn-save-perfil');
-    setLoading(btn, true);
-    try {
-      await SupabaseAPI.updateProfile({
-        full_name: $('#perfil-name').value,
-        farm_name: $('#perfil-farm').value,
-        phone: $('#perfil-phone').value,
-      });
-      showToast('Perfil salvo com sucesso!', 'success');
-    } catch (err) {
-      showToast(err.message, 'error');
+      showMsg('error', '✕ ' + (err.message || 'Erro ao criar usuário.'));
     } finally {
-      setLoading(btn, false, 'Salvar alterações');
+      Helpers.setLoading(btn, false, '✚ Criar Usuário');
     }
   }
 
-  // ── SISTEMA ──────────────────────────────────────────────────────────────────
-
-  async function loadSistema() {
-    try {
-      const summary = await SupabaseAPI.getDashboardSummary();
-      $('#sys-lotes').textContent = summary.totalLots;
-      $('#sys-custos').textContent = formatCurrency(summary.totalCosts);
-      $('#sys-vendas').textContent = formatCurrency(summary.totalRevenue);
-    } catch (err) {
-      console.warn('Erro ao carregar resumo do sistema:', err.message);
-    }
+  function showMsg(type, text) {
+    const el = document.getElementById('msg-' + type);
+    const other = document.getElementById(type === 'success' ? 'msg-error' : 'msg-success');
+    el.textContent = text;
+    el.style.display = 'block';
+    other.style.display = 'none';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // ── LOGOUT ──────────────────────────────────────────────────────────────────
-
-  async function handleLogout() {
-    await SupabaseAPI.signOut();
-    window.location.href = 'index.html';
+  function clearMessages() {
+    document.getElementById('msg-success').style.display = 'none';
+    document.getElementById('msg-error').style.display   = 'none';
   }
 </script>
 </body>
