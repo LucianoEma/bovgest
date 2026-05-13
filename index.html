@@ -22,7 +22,7 @@
     <h1 class="login-panel__title">Bem-vindo de volta</h1>
     <p class="login-panel__sub">Acesse sua conta para continuar</p>
 
-    <form class="login-form" id="login-form" onsubmit="return false;">
+    <div class="login-form" id="login-form">
       <div class="form-group">
         <label class="form-label" for="email">E-mail</label>
         <input
@@ -31,7 +31,6 @@
           id="email"
           name="email"
           placeholder="seu@email.com"
-          required
           autocomplete="email"
         />
       </div>
@@ -44,7 +43,6 @@
           id="password"
           name="password"
           placeholder="••••••••"
-          required
           autocomplete="current-password"
         />
       </div>
@@ -59,16 +57,6 @@
         Entrar
       </button>
 
-      <!-- Enter no campo de senha também dispara o login -->
-      <script>
-        document.getElementById('password').addEventListener('keydown', function(e) {
-          if (e.key === 'Enter') handleLogin();
-        });
-        document.getElementById('email').addEventListener('keydown', function(e) {
-          if (e.key === 'Enter') handleLogin();
-        });
-      </script>
-
       <div
         id="login-error"
         style="
@@ -82,7 +70,13 @@
           border:1px solid #fca5a5;
         "
       ></div>
-    </form>
+
+      <div style="margin-top:18px;padding:12px 14px;background:#fef9c3;color:#713f12;border-radius:var(--radius,8px);font-size:.8rem;border:1px solid #fde68a;">
+        <strong>Acesso padrão:</strong><br>
+        E-mail: <code>admin@bovgest.com</code><br>
+        Senha: <code>admin123</code>
+      </div>
+    </div>
 
     <p class="login-footer">
       BovGest v1.0 &mdash; Gestão de Gado
@@ -97,9 +91,17 @@
     window.location.href = 'dashboard.html';
   }
 
+  // Enter dispara login
+  document.getElementById('password').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleLogin();
+  });
+  document.getElementById('email').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleLogin();
+  });
+
   async function handleLogin() {
-    const btn   = document.getElementById('login-btn');
-    const errEl = document.getElementById('login-error');
+    const btn      = document.getElementById('login-btn');
+    const errEl    = document.getElementById('login-error');
     const email    = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
@@ -109,34 +111,13 @@
       return;
     }
 
-    // Desabilita botão
     btn.disabled    = true;
     btn.textContent = 'Entrando...';
     errEl.style.display = 'none';
 
-    const SUPABASE_URL      = 'https://qqxxzrymmscqamqljmae.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHh6cnltbXNjcWFtcWxqbWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODM5MDksImV4cCI6MjA5MjU1OTkwOX0.kIwLs2Bmb9k9ZCC6vBxpoiW2SEZIeeOM0JUHIegA_ZU';
-
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: {
-          'apikey':       SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error_description || data.msg || 'Credenciais inválidas.');
-      }
-
-      // Salva sessão e redireciona
-      localStorage.setItem('bovgest_session', JSON.stringify(data));
+      await SupabaseAPI.signIn(email, password);
       window.location.href = 'dashboard.html';
-
     } catch (err) {
       errEl.textContent   = err.message || 'Falha ao entrar. Verifique suas credenciais.';
       errEl.style.display = 'block';
