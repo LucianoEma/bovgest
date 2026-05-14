@@ -829,3 +829,10 @@ tbody tr:hover { background: #fdfaf7; }
 .flex-1 { flex: 1; }
 .hidden { display: none !important; }
 .loading { opacity: .6; pointer-events: none; }
+
+/* ── ADIÇÕES BovGest Planilha ── */
+.badge--em-atraso { background: #fee2e2; color: #dc2626; }
+.badge--parcelado { background: #fef9c3; color: #713f12; }
+.badge--pendente  { background: #fff7ed; color: #c2410c; }
+:root { --surface-alt: #f9fafb; }
+.hidden { display: none !important; }
