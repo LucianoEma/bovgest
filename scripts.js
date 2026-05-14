@@ -782,7 +782,7 @@ async function loadRelatorios() {
     if (svgT && legT) {
       var tipos = {};
       ops.forEach(function(o){ var t = (o.referencia||'Outros').trim(); tipos[t]=(tipos[t]||0)+(o.qtd||0); });
-      drawDonut(svgT, legT, tipos);
+      drawDonut(svgT, legT, tipos, function(v){ return v+' cabeças'; });
     }
 
     // ── GRÁFICO 3: Evolução de Despesas ─────────────────────────────────────
@@ -1094,7 +1094,8 @@ function drawLineChart(svg, vals, labels, color) {
   });
 }
 
-function drawDonut(svg, leg, totals) {
+function drawDonut(svg, leg, totals, fmtFn) {
+  if (!fmtFn) fmtFn = fc;
   var entries = Object.entries(totals).sort(function(a,b){ return b[1]-a[1]; }).slice(0,7);
   var total = entries.reduce(function(s,e){ return s+e[1]; }, 0);
   var colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
@@ -1127,7 +1128,7 @@ function drawDonut(svg, leg, totals) {
     path.addEventListener('mouseenter', function(){
       this.style.transform = 'scale(1.06)';
       this.setAttribute('opacity','1');
-      window._chartTip.show('<strong>'+e[0]+'</strong><br>'+fc(e[1])+'<br><span style="color:#9ca3af">'+pct+'% do total</span>');
+      window._chartTip.show('<strong>'+e[0]+'</strong><br>'+fmtFn(e[1])+'<br><span style="color:#9ca3af">'+pct+'% do total</span>');
     });
     path.addEventListener('mouseleave', function(){
       this.style.transform = 'scale(1)';
