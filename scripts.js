@@ -1,16 +1,12 @@
 /**
- * scripts.js
- * Lógica principal do dashboard — seções, CRUD, renderização, relatórios
- * Usa Helpers.* e SupabaseAPI.* diretamente, sem redeclarar variáveis.
+ * scripts.js — BovGest completo
+ * Gerencia todas as seções: Dashboard, Geral, Operações, Financeiro, Movimentação, Despesas, Bancário, Relatórios
  */
 
-// ── ESTADO LOCAL ──────────────────────────────────────────────────────────────
-var allLotes       = [];
 var currentSection = 'dashboard';
-var _custosCache   = [];
+var _opCache = [], _cpCache = [], _crCache = [], _movCache = [];
 
-// ── INICIALIZAÇÃO ─────────────────────────────────────────────────────────────
-
+// ── INIT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   Helpers.requireAuth();
   loadUserInfo();
@@ -19,681 +15,833 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadUserInfo() {
-  var user = SupabaseAPI.getCurrentUser();
-  if (!user) return;
-  var name     = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email || '—');
-  var initials = name.charAt(0).toUpperCase();
-  setText('#user-avatar', initials);
-  setText('#user-name',   name);
-  setText('#user-role',   (user.user_metadata && user.user_metadata.role) ? user.user_metadata.role : 'usuário');
+  var u = SupabaseAPI.getCurrentUser();
+  if (!u) return;
+  var name = (u.user_metadata && u.user_metadata.full_name) ? u.user_metadata.full_name : u.email;
+  setText('#user-avatar', name.charAt(0).toUpperCase());
+  setText('#user-name', name);
+  setText('#user-role', (u.user_metadata && u.user_metadata.role) ? u.user_metadata.role : 'usuário');
 }
 
-// ── NAVEGAÇÃO ENTRE SEÇÕES ────────────────────────────────────────────────────
-
+// ── NAVEGAÇÃO ─────────────────────────────────────────────────────────────────
 function showSection(name) {
   currentSection = name;
-
-  // Oculta todas as seções
-  var sections = document.querySelectorAll('[id^="section-"]');
-  sections.forEach(function(s) { s.classList.add('hidden'); });
-
-  var target = document.getElementById('section-' + name);
-  if (target) target.classList.remove('hidden');
-
-  // Atualiza nav links
-  var navLinks = document.querySelectorAll('.nav-link');
-  navLinks.forEach(function(l) { l.classList.remove('active'); });
-  var navEl = document.getElementById('nav-' + name);
-  if (navEl) navEl.classList.add('active');
-
-  // Atualiza título
-  var titles = {
-    dashboard:  'Dashboard',
-    lotes:      'Lotes',
-    custos:     'Custos',
-    vendas:     'Vendas',
-    relatorios: 'Relatórios',
-  };
+  document.querySelectorAll('[id^="section-"]').forEach(function(s){ s.classList.add('hidden'); });
+  var t = document.getElementById('section-' + name);
+  if (t) t.classList.remove('hidden');
+  document.querySelectorAll('.nav-link').forEach(function(l){ l.classList.remove('active'); });
+  var nl = document.getElementById('nav-' + name);
+  if (nl) nl.classList.add('active');
+  var titles = { dashboard:'Dashboard', geral:'Demonstrativo Geral', operacoes:'Compras e Vendas',
+    financeiro:'Financeiro', movimentacao:'Movimentações', despesas:'Despesas', bancario:'Lançamentos', relatorios:'Relatórios' };
   setText('#page-title', titles[name] || 'BovGest');
-
-  // Botão de ação rápida
-  var actionBtn = document.getElementById('action-btn');
-  if (actionBtn) {
-    var showFor = ['lotes', 'custos', 'vendas'];
-    actionBtn.style.display = showFor.indexOf(name) >= 0 ? '' : 'none';
-    var labels = { lotes: '+ Novo Lote', custos: '+ Novo Custo', vendas: '+ Nova Venda' };
-    if (labels[name]) actionBtn.textContent = labels[name];
+  var ab = document.getElementById('action-btn');
+  if (ab) {
+    var showFor = ['operacoes'];
+    ab.style.display = showFor.indexOf(name) >= 0 ? '' : 'none';
+    if (name === 'operacoes') ab.textContent = '+ Nova Operação';
   }
-
-  // Carrega dados da seção
-  if (name === 'lotes')      loadLotes();
-  if (name === 'custos')     loadCustos();
-  if (name === 'vendas')     loadVendas();
-  if (name === 'relatorios') loadRelatorios();
-}
-
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
-
-async function loadDashboard() {
-  try {
-    var summary = await SupabaseAPI.getDashboardSummary();
-    allLotes = summary.lots || [];
-
-    setText('#stat-animais', Helpers.formatNumber(summary.totalAnimals));
-    setText('#stat-lotes',   summary.activeLots);
-    setText('#stat-custos',  Helpers.formatCurrency(summary.totalCosts));
-    setText('#stat-receita', Helpers.formatCurrency(summary.totalRevenue));
-
-    var lucro = summary.profit;
-    setText('#fin-receita', Helpers.formatCurrency(summary.totalRevenue));
-    setText('#fin-custo',   Helpers.formatCurrency(summary.totalCosts));
-
-    var lucroEl = document.getElementById('fin-lucro');
-    if (lucroEl) {
-      lucroEl.textContent = Helpers.formatCurrency(lucro);
-      lucroEl.className   = lucro >= 0 ? 'text-success' : 'text-danger';
-    }
-
-    renderDashboardLotes(summary.lots.slice(0, 6));
-    populateLotSelects(summary.lots);
-
-  } catch (err) {
-    Helpers.showToast('Erro ao carregar dashboard: ' + err.message, 'error');
-  }
-}
-
-function renderDashboardLotes(lots) {
-  var tbody = document.getElementById('tb-dashboard-lotes');
-  if (!lots || !lots.length) { Helpers.renderTable(tbody, []); return; }
-
-  var rows = lots.map(function(l) {
-    var tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td class="fw-bold">' + (l.name || '—') + '</td>' +
-      '<td>' + Helpers.formatNumber(l.animal_count) + '</td>' +
-      '<td>' + Helpers.statusBadge(l.status) + '</td>';
-    return tr;
-  });
-  Helpers.renderTable(tbody, rows);
-}
-
-// ── LOTES ─────────────────────────────────────────────────────────────────────
-
-async function loadLotes() {
-  var search = (document.getElementById('search-lotes') || {}).value || '';
-  var status = (document.getElementById('filter-status-lotes') || {}).value || '';
-  try {
-    var lots = await SupabaseAPI.getLots({ search: search, status: status });
-    allLotes = lots || [];
-    renderLotesGrid(lots);
-    populateLotSelects(lots);
-  } catch (err) {
-    Helpers.showToast('Erro ao carregar lotes: ' + err.message, 'error');
-  }
-}
-
-function filterLotes() {
-  clearTimeout(window._filterTimer);
-  window._filterTimer = setTimeout(loadLotes, 300);
-}
-
-function renderLotesGrid(lots) {
-  var grid = document.getElementById('lotes-grid');
-  if (!grid) return;
-
-  if (!lots || lots.length === 0) {
-    grid.innerHTML =
-      '<div class="empty-state" style="grid-column:1/-1">' +
-        '<div class="empty-state__icon">🐮</div>' +
-        '<div class="empty-state__title">Nenhum lote encontrado</div>' +
-        '<div class="empty-state__sub">Crie seu primeiro lote clicando em "+ Novo Lote"</div>' +
-      '</div>';
-    return;
-  }
-
-  grid.innerHTML = lots.map(function(l) {
-    return '<div class="lot-card">' +
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">' +
-        '<div>' +
-          '<div class="lot-card__name">' + (l.name || '—') + '</div>' +
-          '<div class="lot-card__info">' + (l.breed || 'Raça não informada') + ' · Entrada: ' + Helpers.formatDate(l.entry_date) + '</div>' +
-        '</div>' +
-        Helpers.statusBadge(l.status) +
-      '</div>' +
-      '<div class="lot-card__stats">' +
-        '<div><div class="lot-card__stat-label">Animais</div><div class="lot-card__stat-value">' + Helpers.formatNumber(l.animal_count) + '</div></div>' +
-        '<div><div class="lot-card__stat-label">Peso Médio</div><div class="lot-card__stat-value">' + (l.avg_weight_entry ? l.avg_weight_entry + ' kg' : '—') + '</div></div>' +
-      '</div>' +
-      '<div class="lot-card__actions">' +
-        '<button class="btn btn-ghost btn-icon" title="Editar" onclick="openEditLote(\'' + l.id + '\')">✏️</button>' +
-        '<button class="btn btn-ghost btn-icon" title="Excluir" onclick="deleteLote(\'' + l.id + '\', \'' + escHtml(l.name) + '\')">🗑️</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-function openEditLote(id) {
-  var lote = allLotes.find(function(l) { return l.id === id; });
-  if (!lote) return;
-  document.getElementById('modal-lote-title').textContent = 'Editar Lote';
-  document.getElementById('lote-id').value     = lote.id;
-  document.getElementById('lote-name').value   = lote.name || '';
-  document.getElementById('lote-count').value  = lote.animal_count || '';
-  document.getElementById('lote-breed').value  = lote.breed || '';
-  document.getElementById('lote-status').value = lote.status || 'active';
-  document.getElementById('lote-entry').value  = lote.entry_date || '';
-  document.getElementById('lote-weight').value = lote.avg_weight_entry || '';
-  document.getElementById('lote-notes').value  = lote.notes || '';
-  Helpers.openModal('modal-lote');
-}
-
-function resetLoteForm() {
-  document.getElementById('modal-lote-title').textContent = 'Novo Lote';
-  document.getElementById('form-lote').reset();
-  document.getElementById('lote-id').value = '';
-}
-
-async function deleteLote(id, name) {
-  if (!confirm('Excluir o lote "' + name + '"?\nIsso também apagará custos e vendas vinculados.')) return;
-  try {
-    await SupabaseAPI.deleteLot(id);
-    Helpers.showToast('Lote excluído com sucesso.', 'success');
-    loadLotes();
-    loadDashboard();
-  } catch (err) {
-    Helpers.showToast('Erro ao excluir: ' + err.message, 'error');
-  }
-}
-
-// ── CUSTOS ────────────────────────────────────────────────────────────────────
-
-var catLabels = {
-  alimentacao: 'Alimentação', veterinario: 'Veterinário',
-  transporte: 'Transporte',   medicamento: 'Medicamento',
-  mao_de_obra: 'Mão de obra', outros: 'Outros',
-};
-
-async function loadCustos() {
-  var lot_id   = (document.getElementById('filter-lote-custo')  || {}).value || '';
-  var category = (document.getElementById('filter-cat-custo')   || {}).value || '';
-  try {
-    var custos = await SupabaseAPI.getCosts({ lot_id: lot_id, category: category });
-    _custosCache = custos || [];
-    renderCustos(custos);
-  } catch (err) {
-    Helpers.showToast('Erro ao carregar custos: ' + err.message, 'error');
-  }
-}
-
-function renderCustos(custos) {
-  var tbody = document.getElementById('tb-custos');
-  if (!custos || custos.length === 0) { Helpers.renderTable(tbody, []); return; }
-
-  var rows = custos.map(function(c) {
-    var tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + Helpers.formatDate(c.date) + '</td>' +
-      '<td>' + ((c.lots && c.lots.name) ? c.lots.name : '—') + '</td>' +
-      '<td><span class="badge badge--orange">' + (catLabels[c.category] || c.category) + '</span></td>' +
-      '<td>' + (c.description || '—') + '</td>' +
-      '<td class="text-right fw-bold text-danger">' + Helpers.formatCurrency(c.amount) + '</td>' +
-      '<td>' +
-        '<button class="btn btn-ghost btn-sm" onclick="openEditCusto(\'' + c.id + '\')">✏️</button>' +
-        '<button class="btn btn-ghost btn-sm" onclick="deleteCusto(\'' + c.id + '\')">🗑️</button>' +
-      '</td>';
-    return tr;
-  });
-  Helpers.renderTable(tbody, rows);
-}
-
-function openEditCusto(id) {
-  var custo = _custosCache.find(function(c) { return c.id === id; });
-  if (!custo) return;
-  document.getElementById('modal-custo-title').textContent = 'Editar Custo';
-  document.getElementById('custo-id').value     = custo.id;
-  document.getElementById('custo-lot').value    = custo.lot_id || '';
-  document.getElementById('custo-cat').value    = custo.category || '';
-  document.getElementById('custo-amount').value = custo.amount || '';
-  document.getElementById('custo-date').value   = custo.date || '';
-  document.getElementById('custo-desc').value   = custo.description || '';
-  Helpers.openModal('modal-custo');
-}
-
-async function deleteCusto(id) {
-  if (!confirm('Excluir este custo?')) return;
-  try {
-    await SupabaseAPI.deleteCost(id);
-    Helpers.showToast('Custo removido.', 'success');
-    loadCustos();
-    loadDashboard();
-  } catch (err) {
-    Helpers.showToast(err.message, 'error');
-  }
-}
-
-// ── VENDAS ────────────────────────────────────────────────────────────────────
-
-async function loadVendas() {
-  var lot_id = (document.getElementById('filter-lote-venda') || {}).value || '';
-  try {
-    var vendas = await SupabaseAPI.getSales({ lot_id: lot_id });
-    renderVendas(vendas);
-  } catch (err) {
-    Helpers.showToast('Erro ao carregar vendas: ' + err.message, 'error');
-  }
-}
-
-function renderVendas(vendas) {
-  var tbody = document.getElementById('tb-vendas');
-  if (!vendas || vendas.length === 0) { Helpers.renderTable(tbody, []); return; }
-
-  var rows = vendas.map(function(v) {
-    var tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + Helpers.formatDate(v.sale_date) + '</td>' +
-      '<td>' + ((v.lots && v.lots.name) ? v.lots.name : '—') + '</td>' +
-      '<td class="text-mono">' + Helpers.formatNumber(v.animal_count) + '</td>' +
-      '<td>' + (v.buyer_name || '—') + '</td>' +
-      '<td class="text-right fw-bold text-success">' + Helpers.formatCurrency(v.total_value) + '</td>' +
-      '<td><button class="btn btn-ghost btn-sm" onclick="deleteVenda(\'' + v.id + '\')">🗑️</button></td>';
-    return tr;
-  });
-  Helpers.renderTable(tbody, rows);
-}
-
-async function deleteVenda(id) {
-  if (!confirm('Excluir esta venda?')) return;
-  try {
-    await SupabaseAPI.deleteSale(id);
-    Helpers.showToast('Venda removida.', 'success');
-    loadVendas();
-    loadDashboard();
-  } catch (err) {
-    Helpers.showToast(err.message, 'error');
-  }
-}
-
-// ── SELECTS DE LOTE ───────────────────────────────────────────────────────────
-
-function populateLotSelects(lots) {
-  var selects = ['custo-lot', 'venda-lot', 'filter-lote-custo', 'filter-lote-venda'];
-  selects.forEach(function(selId) {
-    var el = document.getElementById(selId);
-    if (!el) return;
-    var isFilter  = selId.indexOf('filter') >= 0;
-    var currentVal = el.value;
-    el.innerHTML = '<option value="">' + (isFilter ? 'Todos os lotes' : 'Selecione um lote') + '</option>';
-    (lots || []).forEach(function(l) {
-      var opt = document.createElement('option');
-      opt.value = l.id;
-      opt.textContent = l.name;
-      el.appendChild(opt);
-    });
-    if (currentVal) el.value = currentVal;
-  });
-}
-
-// ── BIND FORMS ────────────────────────────────────────────────────────────────
-
-function bindForms() {
-  // Form: Lote
-  var formLote = document.getElementById('form-lote');
-  if (formLote) {
-    formLote.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      var data = Helpers.getFormData(e.target);
-      var id   = data.id;
-      delete data.id;
-      if (data.animal_count)     data.animal_count     = Number(data.animal_count);
-      if (data.avg_weight_entry) data.avg_weight_entry = Number(data.avg_weight_entry);
-
-      var btn = document.getElementById('btn-save-lote');
-      Helpers.setLoading(btn, true);
-      try {
-        if (id) {
-          await SupabaseAPI.updateLot(id, data);
-          Helpers.showToast('Lote atualizado!', 'success');
-        } else {
-          await SupabaseAPI.insertLot(data);
-          Helpers.showToast('Lote criado com sucesso!', 'success');
-        }
-        Helpers.closeModal('modal-lote');
-        resetLoteForm();
-        if (currentSection === 'lotes') loadLotes();
-        loadDashboard();
-      } catch (err) {
-        Helpers.showToast('Erro: ' + err.message, 'error');
-      } finally {
-        Helpers.setLoading(btn, false, 'Salvar Lote');
-      }
-    });
-  }
-
-  // Form: Custo
-  var formCusto = document.getElementById('form-custo');
-  if (formCusto) {
-    formCusto.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      var data = Helpers.getFormData(e.target);
-      var id   = data.id;
-      delete data.id;
-      data.amount = Number(data.amount);
-
-      var btn = document.getElementById('btn-save-custo');
-      Helpers.setLoading(btn, true);
-      try {
-        if (id) {
-          await SupabaseAPI.updateCost(id, data);
-          Helpers.showToast('Custo atualizado!', 'success');
-        } else {
-          await SupabaseAPI.insertCost(data);
-          Helpers.showToast('Custo registrado!', 'success');
-        }
-        Helpers.closeModal('modal-custo');
-        e.target.reset();
-        document.getElementById('custo-id').value = '';
-        document.getElementById('modal-custo-title').textContent = 'Novo Custo';
-        _custosCache = [];
-        if (currentSection === 'custos') loadCustos();
-        loadDashboard();
-      } catch (err) {
-        Helpers.showToast('Erro: ' + err.message, 'error');
-      } finally {
-        Helpers.setLoading(btn, false, 'Salvar Custo');
-      }
-    });
-  }
-
-  // Form: Venda
-  var formVenda = document.getElementById('form-venda');
-  if (formVenda) {
-    formVenda.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      var data = Helpers.getFormData(e.target);
-      var id   = data.id;
-      delete data.id;
-      data.total_value  = Number(data.total_value);
-      data.animal_count = Number(data.animal_count);
-
-      var btn = document.getElementById('btn-save-venda');
-      Helpers.setLoading(btn, true);
-      try {
-        if (id) {
-          await SupabaseAPI.updateSale(id, data);
-          Helpers.showToast('Venda atualizada!', 'success');
-        } else {
-          await SupabaseAPI.insertSale(data);
-          Helpers.showToast('Venda registrada!', 'success');
-        }
-        Helpers.closeModal('modal-venda');
-        e.target.reset();
-        document.getElementById('venda-id').value = '';
-        if (currentSection === 'vendas') loadVendas();
-        loadDashboard();
-      } catch (err) {
-        Helpers.showToast('Erro: ' + err.message, 'error');
-      } finally {
-        Helpers.setLoading(btn, false, 'Registrar Venda');
-      }
-    });
-  }
-}
-
-// ── RELATÓRIOS ────────────────────────────────────────────────────────────────
-
-async function loadRelatorios() {
-  try {
-    var results = await Promise.all([
-      SupabaseAPI.getLots(),
-      SupabaseAPI.getCosts(),
-      SupabaseAPI.getSales(),
-    ]);
-    var lots  = results[0];
-    var costs = results[1];
-    var sales = results[2];
-
-    var totalAnimals  = lots.reduce(function(s, l)  { return s + (l.animal_count || 0); }, 0);
-    var totalCosts    = costs.reduce(function(s, c)  { return s + (c.amount || 0); }, 0);
-    var totalRevenue  = sales.reduce(function(s, v)  { return s + (v.total_value || 0); }, 0);
-    var soldAnimals   = sales.reduce(function(s, v)  { return s + (v.animal_count || 0); }, 0);
-    var lucro         = totalRevenue - totalCosts;
-    var margem        = totalRevenue > 0 ? ((lucro / totalRevenue) * 100).toFixed(1) : 0;
-
-    var custoAnimal   = totalAnimals > 0 ? totalCosts   / totalAnimals : 0;
-    var receitaAnimal = soldAnimals  > 0 ? totalRevenue / soldAnimals  : 0;
-    var lucroAnimal   = totalAnimals > 0 ? lucro        / totalAnimals : 0;
-
-    setText('#kpi-margem',         margem + '%');
-    setText('#kpi-custo-animal',   Helpers.formatCurrency(custoAnimal));
-    setText('#kpi-receita-animal', Helpers.formatCurrency(receitaAnimal));
-
-    var lucroAnimalEl = document.getElementById('kpi-lucro-animal');
-    if (lucroAnimalEl) {
-      lucroAnimalEl.textContent = Helpers.formatCurrency(lucroAnimal);
-      lucroAnimalEl.style.color = lucroAnimal >= 0 ? '#16a34a' : '#dc2626';
-    }
-
-    drawDonutCategorias(costs);
-    drawBarLotes(lots, costs, sales);
-    drawLineCustos(costs);
-    drawBarStatus(lots);
-
-  } catch (err) {
-    Helpers.showToast('Erro ao carregar relatórios: ' + err.message, 'error');
-  }
-}
-
-function drawDonutCategorias(costs) {
-  var svg    = document.getElementById('donut-svg');
-  var legend = document.getElementById('donut-legend');
-  if (!svg || !legend) return;
-
-  var totals = {};
-  costs.forEach(function(c) {
-    var cat = c.category || 'outros';
-    totals[cat] = (totals[cat] || 0) + (c.amount || 0);
-  });
-
-  var entries = Object.entries(totals).sort(function(a, b) { return b[1] - a[1]; });
-  var total   = entries.reduce(function(s, e) { return s + e[1]; }, 0);
-  var colors  = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
-  var cx = 80, cy = 80, r = 70, ri = 36;
-
-  if (total === 0) {
-    svg.innerHTML = '<text x="80" y="85" text-anchor="middle" font-size="12" fill="#9ca3af">Sem dados</text>';
-    legend.innerHTML = '';
-    return;
-  }
-
-  var startAngle = -Math.PI / 2;
-  var pathsHtml  = '';
-
-  entries.forEach(function(entry, i) {
-    var cat = entry[0], val = entry[1];
-    var angle    = (val / total) * 2 * Math.PI;
-    var endAngle = startAngle + angle;
-    var x1 = cx + r  * Math.cos(startAngle), y1 = cy + r  * Math.sin(startAngle);
-    var x2 = cx + r  * Math.cos(endAngle),   y2 = cy + r  * Math.sin(endAngle);
-    var xi1= cx + ri * Math.cos(startAngle), yi1= cy + ri * Math.sin(startAngle);
-    var xi2= cx + ri * Math.cos(endAngle),   yi2= cy + ri * Math.sin(endAngle);
-    var large = angle > Math.PI ? 1 : 0;
-    var color  = colors[i % colors.length];
-    pathsHtml += '<path d="M' + xi1 + ',' + yi1 + ' L' + x1 + ',' + y1 + ' A' + r + ',' + r + ' 0 ' + large + ',1 ' + x2 + ',' + y2 + ' L' + xi2 + ',' + yi2 + ' A' + ri + ',' + ri + ' 0 ' + large + ',0 ' + xi1 + ',' + yi1 + '" fill="' + color + '" opacity="0.9"/>';
-    startAngle = endAngle;
-  });
-  svg.innerHTML = pathsHtml;
-
-  legend.innerHTML = entries.map(function(entry, i) {
-    var cat = entry[0], val = entry[1];
-    return '<div class="legend-item"><div class="legend-dot" style="background:' + colors[i % colors.length] + '"></div><span style="color:var(--text-muted)">' + (catLabels[cat] || cat) + '</span><strong style="margin-left:auto;padding-left:8px">' + ((val/total)*100).toFixed(0) + '%</strong></div>';
-  }).join('');
-}
-
-function drawBarLotes(lots, costs, sales) {
-  var svg = document.getElementById('bar-lotes');
-  if (!svg) return;
-
-  var lotMap = {};
-  lots.forEach(function(l) { lotMap[l.id] = { name: l.name, custo: 0, receita: 0 }; });
-  costs.forEach(function(c) { if (lotMap[c.lot_id]) lotMap[c.lot_id].custo += c.amount || 0; });
-  sales.forEach(function(v) { if (lotMap[v.lot_id]) lotMap[v.lot_id].receita += v.total_value || 0; });
-
-  var entries = Object.values(lotMap)
-    .filter(function(l) { return l.custo > 0 || l.receita > 0; })
-    .sort(function(a, b) { return (b.custo + b.receita) - (a.custo + a.receita); })
-    .slice(0, 6);
-
-  if (!entries.length) {
-    svg.innerHTML = '<text x="180" y="100" text-anchor="middle" font-size="12" fill="#9ca3af">Sem dados suficientes</text>';
-    return;
-  }
-
-  var W=360,H=200,padL=8,padR=8,padT=16,padB=32;
-  var chartW=W-padL-padR, chartH=H-padT-padB;
-  var maxVal = Math.max.apply(null, entries.map(function(l) { return Math.max(l.custo, l.receita); }).concat([1]));
-  var groupW = chartW / entries.length;
-  var barW   = Math.min(groupW * 0.35, 28);
-  var gap    = 4;
-  var html   = '';
-
-  [0,0.25,0.5,0.75,1].forEach(function(frac) {
-    var y = padT + chartH * (1 - frac);
-    html += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W-padR) + '" y2="' + y + '" stroke="#e5e7eb" stroke-width="1"/>';
-  });
-
-  entries.forEach(function(l, i) {
-    var cx = padL + groupW * i + groupW / 2;
-    var hC = (l.custo   / maxVal) * chartH;
-    var hR = (l.receita / maxVal) * chartH;
-    var xC = cx - barW - gap / 2, xR = cx + gap / 2;
-    var yC = padT + chartH - hC,  yR = padT + chartH - hR;
-    html += '<rect x="' + xC + '" y="' + yC + '" width="' + barW + '" height="' + hC + '" fill="#ef4444" rx="3" opacity="0.85"/>';
-    html += '<rect x="' + xR + '" y="' + yR + '" width="' + barW + '" height="' + hR + '" fill="#10b981" rx="3" opacity="0.85"/>';
-    var label = l.name.length > 8 ? l.name.slice(0, 7) + '…' : l.name;
-    html += '<text x="' + cx + '" y="' + (H - padB + 14) + '" text-anchor="middle" font-size="8" fill="#6b7280">' + label + '</text>';
-  });
-
-  html += '<rect x="' + padL + '" y="' + (H-padB+22) + '" width="8" height="8" fill="#ef4444" rx="2"/>';
-  html += '<text x="' + (padL+11) + '" y="' + (H-padB+30) + '" font-size="8" fill="#6b7280">Custo</text>';
-  html += '<rect x="' + (padL+50) + '" y="' + (H-padB+22) + '" width="8" height="8" fill="#10b981" rx="2"/>';
-  html += '<text x="' + (padL+63) + '" y="' + (H-padB+30) + '" font-size="8" fill="#6b7280">Receita</text>';
-  svg.innerHTML = html;
-}
-
-function drawLineCustos(costs) {
-  var svg = document.getElementById('line-custos');
-  if (!svg) return;
-
-  var now    = new Date();
-  var months = [];
-  for (var i = 5; i >= 0; i--) {
-    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      key:   d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'),
-      label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
-      total: 0,
-    });
-  }
-
-  costs.forEach(function(c) {
-    if (!c.date) return;
-    var key = c.date.slice(0, 7);
-    var m = months.find(function(m) { return m.key === key; });
-    if (m) m.total += c.amount || 0;
-  });
-
-  var W=360,H=200,padL=48,padR=16,padT=20,padB=28;
-  var chartW=W-padL-padR, chartH=H-padT-padB;
-  var maxVal = Math.max.apply(null, months.map(function(m) { return m.total; }).concat([1]));
-  var html   = '';
-
-  [0,0.5,1].forEach(function(frac) {
-    var y = padT + chartH * (1 - frac);
-    html += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W-padR) + '" y2="' + y + '" stroke="#e5e7eb" stroke-width="1"/>';
-    html += '<text x="' + (padL-4) + '" y="' + (y+4) + '" text-anchor="end" font-size="8" fill="#9ca3af">' + Helpers.formatCurrency(maxVal * frac).replace('R$\u00a0','R$') + '</text>';
-  });
-
-  var pts = months.map(function(m, i) {
-    return {
-      x: padL + (i / (months.length - 1)) * chartW,
-      y: padT + chartH * (1 - m.total / maxVal),
-      m: m,
-    };
-  });
-
-  var areaPath = 'M' + pts[0].x + ',' + (padT + chartH) + ' ' +
-    pts.map(function(p) { return 'L' + p.x + ',' + p.y; }).join(' ') +
-    ' L' + pts[pts.length-1].x + ',' + (padT + chartH) + ' Z';
-  html += '<path d="' + areaPath + '" fill="#3b82f6" opacity="0.12"/>';
-
-  var linePath = pts.map(function(p, i) { return (i===0?'M':'L') + p.x + ',' + p.y; }).join(' ');
-  html += '<path d="' + linePath + '" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linejoin="round"/>';
-
-  pts.forEach(function(pt) {
-    html += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="4" fill="#3b82f6" stroke="#fff" stroke-width="2"/>';
-    html += '<text x="' + pt.x + '" y="' + (H-padB+14) + '" text-anchor="middle" font-size="9" fill="#6b7280">' + pt.m.label + '</text>';
-  });
-  svg.innerHTML = html;
-}
-
-function drawBarStatus(lots) {
-  var svg = document.getElementById('bar-status');
-  if (!svg) return;
-
-  var statusMap = { active: 0, finished: 0, sold: 0 };
-  lots.forEach(function(l) {
-    if (statusMap[l.status] !== undefined) statusMap[l.status] += l.animal_count || 0;
-  });
-
-  var labels = { active: 'Ativo', finished: 'Finalizado', sold: 'Vendido' };
-  var colors = { active: '#10b981', finished: '#9ca3af', sold: '#3b82f6' };
-  var entries = Object.entries(statusMap);
-
-  var W=360,H=200,padL=24,padR=24,padT=20,padB=36;
-  var chartW=W-padL-padR, chartH=H-padT-padB;
-  var maxVal = Math.max.apply(null, entries.map(function(e) { return e[1]; }).concat([1]));
-  var barW   = Math.min((chartW / entries.length) * 0.55, 70);
-  var html   = '';
-
-  [0,0.5,1].forEach(function(frac) {
-    var y = padT + chartH * (1 - frac);
-    html += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W-padR) + '" y2="' + y + '" stroke="#e5e7eb" stroke-width="1"/>';
-  });
-
-  entries.forEach(function(entry, i) {
-    var status = entry[0], val = entry[1];
-    var cx = padL + ((i + 0.5) / entries.length) * chartW;
-    var bh = (val / maxVal) * chartH;
-    var bx = cx - barW / 2;
-    var by = padT + chartH - bh;
-    html += '<rect x="' + bx + '" y="' + by + '" width="' + barW + '" height="' + bh + '" fill="' + colors[status] + '" rx="4" opacity="0.85"/>';
-    html += '<text x="' + cx + '" y="' + (by-6) + '" text-anchor="middle" font-size="10" font-weight="700" fill="' + colors[status] + '">' + Helpers.formatNumber(val) + '</text>';
-    html += '<text x="' + cx + '" y="' + (H-padB+16) + '" text-anchor="middle" font-size="10" fill="#6b7280">' + labels[status] + '</text>';
-  });
-  svg.innerHTML = html;
-}
-
-// ── LOGOUT ────────────────────────────────────────────────────────────────────
-
-function handleLogout() {
-  SupabaseAPI.signOut().then(function() {
-    window.location.href = 'index.html';
-  });
-}
-
-// ── UTILS ─────────────────────────────────────────────────────────────────────
-
-function setText(selector, value) {
-  var el = document.querySelector(selector);
-  if (el) el.textContent = (value !== undefined && value !== null) ? value : '—';
-}
-
-function escHtml(str) {
-  return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  if (name === 'geral')        loadGeral();
+  if (name === 'operacoes')    loadOperacoes();
+  if (name === 'financeiro')   loadFinanceiro();
+  if (name === 'movimentacao') loadMovimentacao();
+  if (name === 'despesas')     loadDespesas();
+  if (name === 'bancario')     loadBancario();
+  if (name === 'relatorios')   loadRelatorios();
 }
 
 function openCreateModal() {
-  var modals = { lotes: 'modal-lote', custos: 'modal-custo', vendas: 'modal-venda' };
-  var id = modals[currentSection];
-  if (id) Helpers.openModal(id);
+  openModal('modal-operacao');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    var s = await SupabaseAPI.getDashboardSummary();
+    var geral = s.geral || [];
+    var ativos = geral.filter(function(r){ return r.compras || r.vendas; });
+
+    // Saldo cards
+    var saldos = document.getElementById('dash-saldos');
+    if (saldos) saldos.innerHTML = [
+      { label:'Lucro Líquido 2025', value: fc(s.totalLucro), cls: s.totalLucro>=0?'green':'red', sub:'Jan–Out 2025' },
+      { label:'Compras 2025',       value: fc(s.totalCompras), cls:'red',   sub:'Total investido' },
+      { label:'Vendas 2025',        value: fc(s.totalVendas),  cls:'blue',  sub:'Total faturado' },
+      { label:'Gado em Estoque',    value: fc(s.valorGado),    cls:'amber', sub: (s.qtGado||0) + ' animais' },
+      { label:'Saldo Conta',        value: fc(s.saldoConta),   cls:'green', sub:'Crediarcos' },
+      { label:'Saldo Dinheiro',     value: fc(s.saldoCofre),   cls:'blue',  sub:'Cofre' },
+      { label:'A Pagar',            value: fc(s.totalAPagar),  cls:'red',   sub:'Pendente' },
+      { label:'A Receber',          value: fc(s.totalAReceber),cls:'green', sub:'Pendente' },
+    ].map(function(k){
+      return '<div class="saldo-card saldo-card--'+k.cls+'"><div class="saldo-card__label">'+k.label+'</div><div class="saldo-card__value">'+k.value+'</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;">'+k.sub+'</div></div>';
+    }).join('');
+
+    // Charts
+    drawLucroMensal(ativos);
+    drawCVMensal(ativos);
+    drawDonutDespesas();
+    drawQtGado(ativos);
+  } catch(e) {
+    Helpers.showToast('Erro no dashboard: ' + e.message, 'error');
+  }
+}
+
+function drawLucroMensal(geral) {
+  var svg = document.getElementById('chart-lucro-mensal');
+  if (!svg) return;
+  var vals = geral.map(function(r){ return r.lucro_liquido || 0; });
+  var labels = geral.map(function(r){ return fmesAbrev(r.mes); });
+  drawBarChart(svg, vals, labels, function(v){ return v >= 0 ? '#10b981' : '#ef4444'; });
+}
+
+function drawCVMensal(geral) {
+  var svg = document.getElementById('chart-cv-mensal');
+  if (!svg) return;
+  var W=400,H=200,pL=8,pR=8,pT=16,pB=28;
+  var chartW=W-pL-pR, chartH=H-pT-pB;
+  var maxVal = Math.max.apply(null, geral.map(function(r){ return Math.max(r.compras||0, r.vendas||0); }).concat([1]));
+  var gw = chartW / geral.length;
+  var bw = Math.min(gw*0.3, 22);
+  var html = gridLines(W,H,pL,pR,pT,pB);
+  geral.forEach(function(r,i){
+    var cx = pL + gw*i + gw/2;
+    var hC = ((r.compras||0)/maxVal)*chartH, hV = ((r.vendas||0)/maxVal)*chartH;
+    html += '<rect x="'+(cx-bw-2)+'" y="'+(pT+chartH-hC)+'" width="'+bw+'" height="'+hC+'" fill="#ef4444" rx="3" opacity=".85"/>';
+    html += '<rect x="'+(cx+2)+'" y="'+(pT+chartH-hV)+'" width="'+bw+'" height="'+hV+'" fill="#10b981" rx="3" opacity=".85"/>';
+    html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="8" fill="#6b7280">'+fmesAbrev(r.mes)+'</text>';
+  });
+  html += legend(pL, H, pB, [{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'}]);
+  svg.innerHTML = html;
+}
+
+async function drawDonutDespesas() {
+  var svg = document.getElementById('donut-desp');
+  var leg = document.getElementById('donut-desp-legend');
+  if (!svg || !leg) return;
+  var desp = await SupabaseAPI.getDespesas();
+  var totals = {};
+  desp.forEach(function(d){ totals[d.categoria] = (totals[d.categoria]||0) + (d.valor||0); });
+  drawDonut(svg, leg, totals);
+}
+
+function drawQtGado(geral) {
+  var svg = document.getElementById('chart-qt-gado');
+  if (!svg) return;
+  var vals = geral.map(function(r){ return r.qt_gado || 0; });
+  var labels = geral.map(function(r){ return fmesAbrev(r.mes); });
+  drawLineChart(svg, vals, labels, '#f59e0b');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DEMONSTRATIVO GERAL
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadGeral() {
+  try {
+    var rows = await SupabaseAPI.getGeral();
+    var tbody = document.getElementById('tb-geral');
+    var tfoot = document.getElementById('tfoot-geral');
+    if (!rows || !rows.length) { renderEmpty(tbody, 9); return; }
+
+    var totCompras=0, totVendas=0, totLB=0, totDesp=0, totLL=0;
+    tbody.innerHTML = rows.map(function(r){
+      totCompras += r.compras||0; totVendas += r.vendas||0;
+      totLB += r.lucro_bruto||0; totDesp += r.despesas||0; totLL += r.lucro_liquido||0;
+      var ll = r.lucro_liquido||0;
+      return '<tr><td class="fw-bold">'+fmesNome(r.mes)+'</td>'+
+        '<td class="text-right text-mono">'+fc(r.inicio)+'</td>'+
+        '<td class="text-right text-mono text-danger">'+fc(r.compras)+'</td>'+
+        '<td class="text-right text-mono text-success">'+fc(r.vendas)+'</td>'+
+        '<td class="text-right text-mono">'+fc(r.lucro_bruto)+'</td>'+
+        '<td class="text-right text-mono text-danger">'+fc(r.despesas)+'</td>'+
+        '<td class="text-right text-mono '+(ll>=0?'lucro-pos':'lucro-neg')+'">'+fc(ll)+'</td>'+
+        '<td class="text-right text-mono">'+fc(r.valor_final_gado)+'</td>'+
+        '<td class="text-right text-mono">'+(r.qt_gado||'—')+'</td></tr>';
+    }).join('');
+
+    tfoot.innerHTML = '<tr style="font-weight:800;background:var(--surface-alt,#f9fafb)">'+
+      '<td>TOTAL</td><td></td>'+
+      '<td class="text-right text-danger">'+fc(totCompras)+'</td>'+
+      '<td class="text-right text-success">'+fc(totVendas)+'</td>'+
+      '<td class="text-right">'+fc(totLB)+'</td>'+
+      '<td class="text-right text-danger">'+fc(totDesp)+'</td>'+
+      '<td class="text-right '+(totLL>=0?'lucro-pos':'lucro-neg')+'">'+fc(totLL)+'</td>'+
+      '<td colspan="2"></td></tr>';
+
+    // KPIs
+    var kpis = document.getElementById('geral-kpis');
+    if (kpis) {
+      var ultimo = rows[rows.length-1] || {};
+      kpis.innerHTML = [
+        { label:'Lucro Líquido Total', value:fc(totLL), cls:totLL>=0?'green':'red' },
+        { label:'Total Compras',       value:fc(totCompras), cls:'red' },
+        { label:'Total Vendas',        value:fc(totVendas), cls:'blue' },
+        { label:'Total Despesas',      value:fc(totDesp), cls:'amber' },
+        { label:'Gado Atual',          value:(ultimo.qt_gado||0)+' cab', cls:'green' },
+        { label:'Valor Gado',          value:fc(ultimo.valor_final_gado), cls:'amber' },
+      ].map(function(k){
+        return '<div class="saldo-card saldo-card--'+k.cls+'"><div class="saldo-card__label">'+k.label+'</div><div class="saldo-card__value">'+k.value+'</div></div>';
+      }).join('');
+    }
+
+    // Situação financeira
+    var sf = document.getElementById('sit-financeira');
+    if (sf) sf.innerHTML = [
+      { l:'Lucro 2025', v:totLL, bold:false },
+      { l:'Valor Total Gado', v:-(ultimo_valor(rows)), bold:false },
+      { l:'Investimento e Lucro 2023', v:201874.17, bold:false },
+      { l:'Situação Financeira', v:totLL+201874.17, bold:true },
+    ].map(function(i){
+      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">'+
+        '<span style="'+(i.bold?'font-weight:800':'')+'">'+i.l+'</span>'+
+        '<span class="'+(i.v>=0?'text-success':'text-danger')+'" style="font-weight:'+(i.bold?800:600)+';font-family:var(--font-mono)">'+fc(i.v)+'</span></div>';
+    }).join('');
+  } catch(e) {
+    Helpers.showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+function ultimo_valor(rows) {
+  for (var i = rows.length-1; i>=0; i--) {
+    if (rows[i].valor_final_gado) return rows[i].valor_final_gado;
+  }
+  return 0;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// OPERAÇÕES (Compras e Vendas)
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadOperacoes() {
+  try {
+    var mes  = (document.getElementById('filter-op-mes')  || {}).value || '';
+    var forn = (document.getElementById('filter-op-forn') || {}).value || '';
+    var comp = (document.getElementById('filter-op-comp') || {}).value || '';
+    var ref  = (document.getElementById('filter-op-ref')  || {}).value || '';
+    var ops  = await SupabaseAPI.getOperacoes({ mes:mes, fornecedor:forn, comprador:comp, referencia:ref });
+    _opCache = ops;
+    var tbody = document.getElementById('tb-operacoes');
+    var tfoot = document.getElementById('tfoot-operacoes');
+    if (!ops || !ops.length) { renderEmpty(tbody, 12); tfoot.innerHTML=''; return; }
+
+    var totC=0, totV=0, totL=0;
+    tbody.innerHTML = ops.map(function(o){
+      var lb = o.lucro_bruto || 0;
+      totC += o.total_compra||0; totV += o.total_venda||0; totL += lb;
+      return '<tr>'+
+        '<td class="text-mono">'+(o.data_compra ? fd(o.data_compra) : '—')+'</td>'+
+        '<td class="text-mono text-center">'+(o.qtd||'—')+'</td>'+
+        '<td><span class="badge badge--gray" style="font-size:.72rem">'+(o.referencia||'—')+'</span></td>'+
+        '<td>'+(o.fornecedor||'—')+'</td>'+
+        '<td class="text-right text-mono">'+fc(o.valor_un)+'</td>'+
+        '<td class="text-right text-mono text-danger fw-bold">'+fc(o.total_compra)+'</td>'+
+        '<td class="text-mono">'+(o.data_venda ? fd(o.data_venda) : '—')+'</td>'+
+        '<td>'+(o.comprador||'—')+'</td>'+
+        '<td class="text-right text-mono text-success fw-bold">'+fc(o.total_venda)+'</td>'+
+        '<td class="text-right text-mono">'+(o.dias_pasto !== null && o.dias_pasto !== undefined ? o.dias_pasto : '—')+'</td>'+
+        '<td class="text-right text-mono '+(lb>=0?'lucro-pos':'lucro-neg')+'">'+fc(lb)+'</td>'+
+        '<td>'+
+          '<button class="btn btn-ghost btn-sm btn-icon" onclick="editOp(\''+o.id+'\')">✏️</button>'+
+          '<button class="btn btn-ghost btn-sm btn-icon" onclick="delOp(\''+o.id+'\')">🗑️</button>'+
+        '</td></tr>';
+    }).join('');
+
+    tfoot.innerHTML = '<tr style="font-weight:800;background:var(--surface-alt,#f9fafb)">'+
+      '<td colspan="5">TOTAL ('+ops.length+' operações)</td>'+
+      '<td class="text-right text-danger">'+fc(totC)+'</td>'+
+      '<td colspan="2"></td>'+
+      '<td class="text-right text-success">'+fc(totV)+'</td>'+
+      '<td></td>'+
+      '<td class="text-right '+(totL>=0?'lucro-pos':'lucro-neg')+'">'+fc(totL)+'</td>'+
+      '<td></td></tr>';
+  } catch(e) {
+    Helpers.showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+function clearFiltersOp() {
+  ['filter-op-mes','filter-op-forn','filter-op-comp','filter-op-ref'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  loadOperacoes();
+}
+
+function editOp(id) {
+  var o = _opCache.find(function(r){ return r.id === id; });
+  if (!o) return;
+  document.getElementById('modal-op-title').textContent = 'Editar Operação';
+  document.getElementById('op-id').value           = o.id;
+  document.getElementById('op-data-compra').value  = o.data_compra || '';
+  document.getElementById('op-qtd').value           = o.qtd || '';
+  document.getElementById('op-ref').value           = o.referencia || '';
+  document.getElementById('op-fornecedor').value    = o.fornecedor || '';
+  document.getElementById('op-valor-un').value      = o.valor_un || '';
+  document.getElementById('op-total-compra').value  = o.total_compra || '';
+  document.getElementById('op-data-venda').value    = o.data_venda || '';
+  document.getElementById('op-qtd-venda').value     = o.qtd_venda || '';
+  document.getElementById('op-valor-venda').value   = o.valor_venda_un || '';
+  document.getElementById('op-comprador').value     = o.comprador || '';
+  document.getElementById('op-total-venda').value   = o.total_venda || '';
+  document.getElementById('op-dias').value          = o.dias_pasto || '';
+  openModal('modal-operacao');
+}
+
+async function delOp(id) {
+  if (!confirm('Excluir esta operação?')) return;
+  try { await SupabaseAPI.deleteOperacao(id); Helpers.showToast('Removido.','success'); loadOperacoes(); }
+  catch(e) { Helpers.showToast(e.message,'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FINANCEIRO
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadFinanceiro() {
+  try {
+    var mes = (document.getElementById('filter-fin-mes') || {}).value || '';
+    var sit = (document.getElementById('filter-fin-sit') || {}).value || '';
+    var f = {};
+    if (mes) f.mes = mes;
+    if (sit) f.situacao = sit;
+
+    var cp = await SupabaseAPI.getContasPagar(f);
+    var cr = await SupabaseAPI.getContasReceber(f);
+    _cpCache = cp; _crCache = cr;
+
+    // Totais
+    var totCP = cp.reduce(function(s,r){ return s+(r.valor||0); }, 0);
+    var totCR = cr.reduce(function(s,r){ return s+(r.valor||0); }, 0);
+    var pendCP = cp.filter(function(r){ return r.situacao !== 'OK'; }).reduce(function(s,r){ return s+(r.valor||0); }, 0);
+    var pendCR = cr.filter(function(r){ return r.situacao !== 'OK'; }).reduce(function(s,r){ return s+(r.valor||0); }, 0);
+    var el = document.getElementById('fin-totais');
+    if (el) el.innerHTML = [
+      { label:'Total a Pagar',    value:fc(totCP),  cls:'red'   },
+      { label:'Total a Receber',  value:fc(totCR),  cls:'green' },
+      { label:'Pendente Pagar',   value:fc(pendCP), cls:'amber' },
+      { label:'Pendente Receber', value:fc(pendCR), cls:'blue'  },
+    ].map(function(k){
+      return '<div class="saldo-card saldo-card--'+k.cls+'"><div class="saldo-card__label">'+k.label+'</div><div class="saldo-card__value">'+k.value+'</div></div>';
+    }).join('');
+
+    // Tabela Contas a Pagar
+    var tbCP = document.getElementById('tb-cp');
+    if (!cp.length) { renderEmpty(tbCP, 7); }
+    else tbCP.innerHTML = cp.map(function(r){
+      return '<tr>'+
+        '<td class="text-mono">'+(r.ref ? fd(r.ref) : '—')+'</td>'+
+        '<td class="text-mono">'+(r.data_pgto ? fd(r.data_pgto) : '—')+'</td>'+
+        '<td class="text-right text-mono fw-bold text-danger">'+fc(r.valor)+'</td>'+
+        '<td><span class="badge badge--gray" style="font-size:.7rem">'+(r.forma_pg||'—')+'</span></td>'+
+        '<td>'+(r.referencia||'—')+'</td>'+
+        '<td>'+sitBadge(r.situacao)+'</td>'+
+        '<td><button class="btn btn-ghost btn-xs" onclick="delCP(\''+r.id+'\')">🗑️</button></td></tr>';
+    }).join('');
+
+    // Tabela Contas a Receber
+    var tbCR = document.getElementById('tb-cr');
+    if (!cr.length) { renderEmpty(tbCR, 7); }
+    else tbCR.innerHTML = cr.map(function(r){
+      return '<tr>'+
+        '<td class="text-mono">'+(r.ref ? fd(r.ref) : '—')+'</td>'+
+        '<td class="text-mono">'+(r.data_recb ? fd(r.data_recb) : '—')+'</td>'+
+        '<td class="text-right text-mono fw-bold text-success">'+fc(r.valor)+'</td>'+
+        '<td><span class="badge badge--gray" style="font-size:.7rem">'+(r.forma_pg||'—')+'</span></td>'+
+        '<td>'+(r.referencia||'—')+'</td>'+
+        '<td>'+sitBadge(r.situacao)+'</td>'+
+        '<td><button class="btn btn-ghost btn-xs" onclick="delCR(\''+r.id+'\')">🗑️</button></td></tr>';
+    }).join('');
+  } catch(e) {
+    Helpers.showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function delCP(id) {
+  if (!confirm('Excluir?')) return;
+  try { await SupabaseAPI.deleteContaPagar(id); Helpers.showToast('Removido.','success'); loadFinanceiro(); }
+  catch(e) { Helpers.showToast(e.message,'error'); }
+}
+async function delCR(id) {
+  if (!confirm('Excluir?')) return;
+  try { await SupabaseAPI.deleteContaReceber(id); Helpers.showToast('Removido.','success'); loadFinanceiro(); }
+  catch(e) { Helpers.showToast(e.message,'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MOVIMENTAÇÕES
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadMovimentacao() {
+  try {
+    var mes   = (document.getElementById('filter-mov-mes')   || {}).value || '';
+    var conta = (document.getElementById('filter-mov-conta') || {}).value || '';
+    var tipo  = (document.getElementById('filter-mov-tipo')  || {}).value || '';
+    var f = {};
+    if (mes)   f.mes = mes;
+    if (conta) f.conta = conta;
+    if (tipo)  f.identificacao = tipo;
+
+    var movs = await SupabaseAPI.getMovimentacoes(f);
+    _movCache = movs;
+
+    var totalEntradas = movs.filter(function(r){ return r.valor > 0; }).reduce(function(s,r){ return s+r.valor; }, 0);
+    var totalSaidas   = movs.filter(function(r){ return r.valor < 0; }).reduce(function(s,r){ return s+r.valor; }, 0);
+    var saldo = totalEntradas + totalSaidas;
+
+    var el = document.getElementById('mov-totais');
+    if (el) el.innerHTML = [
+      { label:'Entradas', value:fc(totalEntradas), cls:'green' },
+      { label:'Saídas',   value:fc(Math.abs(totalSaidas)), cls:'red' },
+      { label:'Saldo',    value:fc(saldo), cls:saldo>=0?'green':'red' },
+      { label:'Lançamentos', value:movs.length+' reg', cls:'blue' },
+    ].map(function(k){
+      return '<div class="saldo-card saldo-card--'+k.cls+'"><div class="saldo-card__label">'+k.label+'</div><div class="saldo-card__value">'+k.value+'</div></div>';
+    }).join('');
+
+    var tbody = document.getElementById('tb-mov');
+    var tfoot = document.getElementById('tfoot-mov');
+    if (!movs.length) { renderEmpty(tbody, 7); tfoot.innerHTML=''; return; }
+
+    tbody.innerHTML = movs.map(function(r){
+      var cls = r.valor >= 0 ? 'mov-entrada' : 'mov-saida';
+      var contaAbrev = r.conta && r.conta.includes('Crediarcos') ? 'Crediarcos' : (r.conta||'—');
+      return '<tr>'+
+        '<td class="text-mono">'+(r.data ? fd(r.data) : '—')+'</td>'+
+        '<td class="text-right text-mono fw-bold '+cls+'">'+fc(r.valor)+'</td>'+
+        '<td>'+(r.referencia||'—')+'</td>'+
+        '<td><span class="badge badge--gray" style="font-size:.7rem">'+(r.identificacao||'—')+'</span></td>'+
+        '<td style="font-size:.8rem">'+contaAbrev+'</td>'+
+        '<td style="font-size:.8rem;color:var(--text-muted)">'+(r.observacao||'')+'</td>'+
+        '<td><button class="btn btn-ghost btn-xs" onclick="delMov(\''+r.id+'\')">🗑️</button></td></tr>';
+    }).join('');
+
+    tfoot.innerHTML = '<tr style="font-weight:800;background:var(--surface-alt,#f9fafb)">'+
+      '<td>SALDO</td>'+
+      '<td class="text-right '+(saldo>=0?'text-success':'text-danger')+'">'+fc(saldo)+'</td>'+
+      '<td colspan="5"></td></tr>';
+  } catch(e) {
+    Helpers.showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function delMov(id) {
+  if (!confirm('Excluir?')) return;
+  try { await SupabaseAPI.deleteMovimentacao(id); Helpers.showToast('Removido.','success'); loadMovimentacao(); }
+  catch(e) { Helpers.showToast(e.message,'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DESPESAS
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadDespesas() {
+  try {
+    var desp = await SupabaseAPI.getDespesas();
+    var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+    // Agrupar por categoria
+    var cats = {};
+    desp.forEach(function(d){
+      if (!cats[d.categoria]) cats[d.categoria] = {};
+      cats[d.categoria][d.mes_num] = (cats[d.categoria][d.mes_num]||0) + (d.valor||0);
+    });
+
+    // Totais por mês
+    var totMes = {};
+    for (var mn = 1; mn <= 12; mn++) totMes[mn] = 0;
+    desp.forEach(function(d){ totMes[d.mes_num] = (totMes[d.mes_num]||0) + (d.valor||0); });
+
+    var thead = document.getElementById('desp-thead');
+    var tbody = document.getElementById('desp-tbody');
+    var tfoot = document.getElementById('desp-tfoot');
+
+    thead.innerHTML = '<tr><th style="min-width:180px">Categoria</th>' +
+      meses.map(function(m,i){ return '<th class="text-right" style="min-width:80px">'+m.substr(0,3)+'</th>'; }).join('') +
+      '<th class="text-right" style="min-width:90px">TOTAL</th></tr>';
+
+    var catList = Object.keys(cats).sort();
+    tbody.innerHTML = catList.map(function(cat){
+      var total = 0;
+      var cols = '';
+      for (var mn=1; mn<=12; mn++) {
+        var v = cats[cat][mn] || 0;
+        total += v;
+        cols += '<td class="text-right text-mono" style="font-size:.8rem">'+(v > 0 ? fc(v) : '<span style="color:var(--text-muted)">—</span>')+'</td>';
+      }
+      return '<tr><td style="font-size:.82rem;font-weight:600">'+cat+'</td>'+cols+
+        '<td class="text-right text-mono fw-bold" style="font-size:.82rem">'+fc(total)+'</td></tr>';
+    }).join('');
+
+    tfoot.innerHTML = '<tr style="font-weight:800;background:var(--surface-alt,#f9fafb)"><td>TOTAL MENSAL</td>' +
+      [1,2,3,4,5,6,7,8,9,10,11,12].map(function(mn){
+        return '<td class="text-right text-mono text-danger">'+fc(totMes[mn])+'</td>';
+      }).join('') +
+      '<td class="text-right text-mono text-danger fw-bold">'+fc(Object.values(totMes).reduce(function(a,b){return a+b;},0))+'</td></tr>';
+  } catch(e) {
+    Helpers.showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BANCÁRIO
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadBancario() {
+  try {
+    var conta = await SupabaseAPI.getLancamentosConta();
+    var cofre = await SupabaseAPI.getLancamentosCofre();
+
+    function renderBanco(tbodyId, rows) {
+      var tbody = document.getElementById(tbodyId);
+      if (!rows || !rows.length) { renderEmpty(tbody, 5); return; }
+      tbody.innerHTML = rows.map(function(r){
+        var sf = r.saldo_final || 0;
+        return '<tr>'+
+          '<td class="fw-bold">'+fmesNome(r.mes)+'</td>'+
+          '<td class="text-right text-mono">'+fc(r.saldo_inicial)+'</td>'+
+          '<td class="text-right text-mono text-danger">'+fc(r.debitos)+'</td>'+
+          '<td class="text-right text-mono text-success">'+fc(r.creditos)+'</td>'+
+          '<td class="text-right text-mono fw-bold '+(sf>=0?'lucro-pos':'lucro-neg')+'">'+fc(sf)+'</td></tr>';
+      }).join('');
+    }
+    renderBanco('tb-banco', conta);
+    renderBanco('tb-cofre', cofre);
+  } catch(e) {
+    Helpers.showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RELATÓRIOS
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadRelatorios() {
+  try {
+    var geral = await SupabaseAPI.getGeral();
+    var ops   = await SupabaseAPI.getOperacoes();
+    var desp  = await SupabaseAPI.getDespesas();
+
+    var ativos = geral.filter(function(r){ return r.compras || r.vendas; });
+    var totLL   = ativos.reduce(function(s,r){ return s+(r.lucro_liquido||0); }, 0);
+    var totV    = ativos.reduce(function(s,r){ return s+(r.vendas||0); }, 0);
+    var totC    = ativos.reduce(function(s,r){ return s+(r.compras||0); }, 0);
+    var totD    = ativos.reduce(function(s,r){ return s+(r.despesas||0); }, 0);
+    var margem  = totV > 0 ? ((totLL/totV)*100).toFixed(1) : 0;
+    var totAnimais = ops.reduce(function(s,r){ return s+(r.qtd||0); }, 0);
+    var lucroAnim  = totAnimais > 0 ? totLL/totAnimais : 0;
+
+    var kpis = document.getElementById('rel-kpis');
+    if (kpis) kpis.innerHTML = [
+      { label:'Margem de Lucro',  value:margem+'%',  sub:'Lucro/Receita' },
+      { label:'Lucro por Animal', value:fc(lucroAnim), sub:'Média do rebanho' },
+      { label:'Receita Total',    value:fc(totV), sub:'Todas as vendas' },
+      { label:'Total Despesas',   value:fc(totD), sub:'Custos operacionais' },
+    ].map(function(k){
+      return '<div class="kpi-card"><div class="kpi-card__label">'+k.label+'</div>'+
+        '<div class="kpi-card__value">'+k.value+'</div>'+
+        '<div class="kpi-card__sub">'+k.sub+'</div></div>';
+    }).join('');
+
+    // Gráfico resultado mensal
+    var svgM = document.getElementById('rel-bar-mensal');
+    if (svgM) {
+      var W=400,H=200,pL=8,pR=8,pT=16,pB=28;
+      var chartW=W-pL-pR, chartH=H-pT-pB;
+      var maxVal = Math.max.apply(null, ativos.map(function(r){ return Math.max(r.compras||0, r.vendas||0); }).concat([1]));
+      var gw = chartW/ativos.length;
+      var bw = Math.min(gw*0.25, 18);
+      var html = gridLines(W,H,pL,pR,pT,pB);
+      ativos.forEach(function(r,i){
+        var cx = pL+gw*i+gw/2;
+        var hC = ((r.compras||0)/maxVal)*chartH, hV = ((r.vendas||0)/maxVal)*chartH;
+        var hL = Math.abs((r.lucro_liquido||0))/maxVal*chartH;
+        var ll = r.lucro_liquido||0;
+        html += '<rect x="'+(cx-bw*1.5-2)+'" y="'+(pT+chartH-hC)+'" width="'+bw+'" height="'+hC+'" fill="#ef4444" rx="2" opacity=".8"/>';
+        html += '<rect x="'+(cx-bw/2)+'" y="'+(pT+chartH-hV)+'" width="'+bw+'" height="'+hV+'" fill="#10b981" rx="2" opacity=".8"/>';
+        html += '<rect x="'+(cx+bw/2+2)+'" y="'+(ll>=0?pT+chartH-hL:pT+chartH)+'" width="'+bw+'" height="'+hL+'" fill="'+(ll>=0?'#3b82f6':'#f97316')+'" rx="2" opacity=".8"/>';
+        html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="8" fill="#6b7280">'+fmesAbrev(r.mes)+'</text>';
+      });
+      html += legend(pL,H,pB,[{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'},{c:'#3b82f6',l:'Lucro'}]);
+      svgM.innerHTML = html;
+    }
+
+    // Donut tipos de animal
+    var svgT = document.getElementById('rel-donut-tipo');
+    var legT = document.getElementById('rel-donut-tipo-legend');
+    if (svgT && legT) {
+      var tipos = {};
+      ops.forEach(function(o){ var t = o.referencia||'Outros'; tipos[t]=(tipos[t]||0)+(o.qtd||0); });
+      drawDonut(svgT, legT, tipos);
+    }
+
+    // Linha despesas por mês
+    var svgD = document.getElementById('rel-line-desp');
+    if (svgD) {
+      var vals = ativos.map(function(r){ return r.despesas||0; });
+      var labs = ativos.map(function(r){ return fmesAbrev(r.mes); });
+      drawLineChart(svgD, vals, labs, '#8b5cf6');
+    }
+
+    // Bar fornecedores
+    var svgF = document.getElementById('rel-bar-forn');
+    if (svgF) {
+      var fornMap = {};
+      ops.forEach(function(o){ if(o.fornecedor) fornMap[o.fornecedor]=(fornMap[o.fornecedor]||0)+(o.total_compra||0); });
+      var top = Object.entries(fornMap).sort(function(a,b){ return b[1]-a[1]; }).slice(0,8);
+      var W=400,H=200,pL=8,pR=8,pT=16,pB=40;
+      var chartW=W-pL-pR, chartH=H-pT-pB;
+      var maxV = top[0] ? top[0][1] : 1;
+      var bw = Math.min((chartW/top.length)*0.6, 36);
+      var html = gridLines(W,H,pL,pR,pT,pB);
+      top.forEach(function(e,i){
+        var cx = pL+(chartW/top.length)*i+(chartW/top.length/2);
+        var bh = (e[1]/maxV)*chartH;
+        html += '<rect x="'+(cx-bw/2)+'" y="'+(pT+chartH-bh)+'" width="'+bw+'" height="'+bh+'" fill="#3b82f6" rx="3" opacity=".85"/>';
+        var label = e[0].length>10 ? e[0].substr(0,9)+'…' : e[0];
+        html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="7" fill="#6b7280">'+label+'</text>';
+      });
+      svgF.innerHTML = html;
+    }
+  } catch(e) {
+    Helpers.showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BIND FORMS
+// ══════════════════════════════════════════════════════════════════════════════
+function bindForms() {
+  // Operação
+  var fOp = document.getElementById('form-operacao');
+  if (fOp) fOp.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var id = document.getElementById('op-id').value;
+    var data = {
+      data_compra:    document.getElementById('op-data-compra').value || null,
+      qtd:            +document.getElementById('op-qtd').value,
+      referencia:     document.getElementById('op-ref').value,
+      fornecedor:     document.getElementById('op-fornecedor').value,
+      valor_un:       +document.getElementById('op-valor-un').value || null,
+      total_compra:   +document.getElementById('op-total-compra').value || null,
+      data_venda:     document.getElementById('op-data-venda').value || null,
+      qtd_venda:      +document.getElementById('op-qtd-venda').value || null,
+      valor_venda_un: +document.getElementById('op-valor-venda').value || null,
+      comprador:      document.getElementById('op-comprador').value,
+      total_venda:    +document.getElementById('op-total-venda').value || null,
+      dias_pasto:     +document.getElementById('op-dias').value || null,
+    };
+    data.lucro_bruto = (data.total_venda||0) - (data.total_compra||0);
+    try {
+      if (id) await SupabaseAPI.updateOperacao(id, data);
+      else    await SupabaseAPI.insertOperacao(data);
+      Helpers.showToast('Salvo!','success');
+      closeModal('modal-operacao');
+      e.target.reset();
+      document.getElementById('op-id').value = '';
+      document.getElementById('modal-op-title').textContent = 'Nova Operação';
+      if (currentSection === 'operacoes') loadOperacoes();
+    } catch(err) { Helpers.showToast(err.message,'error'); }
+  });
+
+  // Conta a Pagar
+  var fCP = document.getElementById('form-cp');
+  if (fCP) fCP.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var id = document.getElementById('cp-id').value;
+    var data = {
+      ref:        document.getElementById('cp-ref').value || null,
+      data_pgto:  document.getElementById('cp-data').value || null,
+      valor:      +document.getElementById('cp-valor').value,
+      forma_pg:   document.getElementById('cp-forma').value,
+      referencia: document.getElementById('cp-referencia').value,
+      situacao:   document.getElementById('cp-situacao').value,
+      pago:       document.getElementById('cp-situacao').value === 'OK' ? +document.getElementById('cp-valor').value : 0,
+    };
+    try {
+      if (id) await SupabaseAPI.updateContaPagar(id, data);
+      else    await SupabaseAPI.insertContaPagar(data);
+      Helpers.showToast('Salvo!','success'); closeModal('modal-cp'); e.target.reset();
+      document.getElementById('cp-id').value = '';
+      if (currentSection === 'financeiro') loadFinanceiro();
+    } catch(err) { Helpers.showToast(err.message,'error'); }
+  });
+
+  // Conta a Receber
+  var fCR = document.getElementById('form-cr');
+  if (fCR) fCR.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var id = document.getElementById('cr-id').value;
+    var data = {
+      ref:        document.getElementById('cr-ref').value || null,
+      data_recb:  document.getElementById('cr-data').value || null,
+      valor:      +document.getElementById('cr-valor').value,
+      forma_pg:   document.getElementById('cr-forma').value,
+      referencia: document.getElementById('cr-referencia').value,
+      situacao:   document.getElementById('cr-situacao').value,
+      recebido:   document.getElementById('cr-situacao').value === 'OK' ? +document.getElementById('cr-valor').value : 0,
+    };
+    try {
+      if (id) await SupabaseAPI.updateContaReceber(id, data);
+      else    await SupabaseAPI.insertContaReceber(data);
+      Helpers.showToast('Salvo!','success'); closeModal('modal-cr'); e.target.reset();
+      document.getElementById('cr-id').value = '';
+      if (currentSection === 'financeiro') loadFinanceiro();
+    } catch(err) { Helpers.showToast(err.message,'error'); }
+  });
+
+  // Movimentação
+  var fMov = document.getElementById('form-mov');
+  if (fMov) fMov.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var data = {
+      data:          document.getElementById('mov-data').value,
+      valor:         +document.getElementById('mov-valor').value,
+      referencia:    document.getElementById('mov-ref').value,
+      identificacao: document.getElementById('mov-ident').value,
+      conta:         document.getElementById('mov-conta').value,
+      observacao:    document.getElementById('mov-obs').value,
+    };
+    try {
+      await SupabaseAPI.insertMovimentacao(data);
+      Helpers.showToast('Lançado!','success'); closeModal('modal-mov'); e.target.reset();
+      if (currentSection === 'movimentacao') loadMovimentacao();
+    } catch(err) { Helpers.showToast(err.message,'error'); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHART HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function drawBarChart(svg, vals, labels, colorFn) {
+  var W=400,H=200,pL=8,pR=8,pT=16,pB=28;
+  var chartW=W-pL-pR, chartH=H-pT-pB;
+  var maxVal = Math.max.apply(null, vals.map(Math.abs).concat([1]));
+  var bw = Math.min((chartW/vals.length)*0.6, 32);
+  var html = gridLines(W,H,pL,pR,pT,pB);
+  vals.forEach(function(v,i){
+    var cx = pL+(chartW/vals.length)*i+(chartW/vals.length/2);
+    var bh = (Math.abs(v)/maxVal)*chartH;
+    var color = typeof colorFn === 'function' ? colorFn(v) : colorFn;
+    html += '<rect x="'+(cx-bw/2)+'" y="'+(pT+chartH-bh)+'" width="'+bw+'" height="'+bh+'" fill="'+color+'" rx="3" opacity=".85"/>';
+    html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="8" fill="#6b7280">'+(labels[i]||'')+'</text>';
+  });
+  svg.innerHTML = html;
+}
+
+function drawLineChart(svg, vals, labels, color) {
+  var W=400,H=200,pL=40,pR=12,pT=16,pB=28;
+  var chartW=W-pL-pR, chartH=H-pT-pB;
+  var maxVal = Math.max.apply(null, vals.concat([1]));
+  var html = gridLines(W,H,pL,pR,pT,pB);
+  var pts = vals.map(function(v,i){
+    return { x: pL+(i/(vals.length-1||1))*chartW, y: pT+chartH*(1-v/maxVal) };
+  });
+  if (pts.length > 1) {
+    var area = 'M'+pts[0].x+','+(pT+chartH)+' '+pts.map(function(p){ return 'L'+p.x+','+p.y; }).join(' ')+' L'+pts[pts.length-1].x+','+(pT+chartH)+' Z';
+    html += '<path d="'+area+'" fill="'+color+'" opacity=".12"/>';
+    var line = pts.map(function(p,i){ return (i===0?'M':'L')+p.x+','+p.y; }).join(' ');
+    html += '<path d="'+line+'" stroke="'+color+'" stroke-width="2.5" fill="none" stroke-linejoin="round"/>';
+  }
+  pts.forEach(function(p,i){
+    html += '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="'+color+'" stroke="#fff" stroke-width="2"/>';
+    html += '<text x="'+p.x+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="9" fill="#6b7280">'+(labels[i]||'')+'</text>';
+  });
+  svg.innerHTML = html;
+}
+
+function drawDonut(svg, leg, totals) {
+  var entries = Object.entries(totals).sort(function(a,b){ return b[1]-a[1]; }).slice(0,7);
+  var total = entries.reduce(function(s,e){ return s+e[1]; }, 0);
+  var colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+  var cx=75,cy=75,r=65,ri=32;
+  if (!total) { svg.innerHTML='<text x="75" y="80" text-anchor="middle" font-size="11" fill="#9ca3af">Sem dados</text>'; leg.innerHTML=''; return; }
+  var start = -Math.PI/2, html='';
+  entries.forEach(function(e,i){
+    var angle = (e[1]/total)*2*Math.PI;
+    var end = start+angle;
+    var x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start);
+    var x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
+    var xi1=cx+ri*Math.cos(start),yi1=cy+ri*Math.sin(start);
+    var xi2=cx+ri*Math.cos(end),yi2=cy+ri*Math.sin(end);
+    var lg = angle>Math.PI?1:0;
+    html += '<path d="M'+xi1+','+yi1+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' L'+xi2+','+yi2+' A'+ri+','+ri+' 0 '+lg+',0 '+xi1+','+yi1+'" fill="'+colors[i%colors.length]+'" opacity=".9"/>';
+    start = end;
+  });
+  svg.innerHTML = html;
+  leg.innerHTML = entries.map(function(e,i){
+    var pct = ((e[1]/total)*100).toFixed(0);
+    var label = e[0].length>16 ? e[0].substr(0,15)+'…' : e[0];
+    return '<div class="legend-item"><div class="legend-dot" style="background:'+colors[i%colors.length]+'"></div>'+
+      '<span style="color:var(--text-muted);flex:1">'+label+'</span>'+
+      '<strong style="padding-left:6px">'+pct+'%</strong></div>';
+  }).join('');
+}
+
+function gridLines(W,H,pL,pR,pT,pB) {
+  var chartH=H-pT-pB;
+  var html='';
+  [0,0.25,0.5,0.75,1].forEach(function(f){
+    var y=pT+chartH*(1-f);
+    html+='<line x1="'+pL+'" y1="'+y+'" x2="'+(W-pR)+'" y2="'+y+'" stroke="#e5e7eb" stroke-width="1"/>';
+  });
+  return html;
+}
+
+function legend(pL,H,pB,items) {
+  var html='', x=pL;
+  items.forEach(function(it){
+    html+='<rect x="'+x+'" y="'+(H-pB+22)+'" width="8" height="8" fill="'+it.c+'" rx="2"/>';
+    html+='<text x="'+(x+11)+'" y="'+(H-pB+30)+'" font-size="8" fill="#6b7280">'+it.l+'</text>';
+    x += 55;
+  });
+  return html;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LOGOUT / UTILS
+// ══════════════════════════════════════════════════════════════════════════════
+function handleLogout() {
+  SupabaseAPI.signOut().then(function(){ window.location.href = 'index.html'; });
+}
+
+function setText(sel, val) {
+  var el = document.querySelector(sel);
+  if (el) el.textContent = (val !== null && val !== undefined) ? val : '—';
+}
+
+// Formatters
+function fc(v) { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
+function fd(s) {
+  if (!s) return '—';
+  // s pode ser 'YYYY-MM-DD'
+  var parts = s.split('-');
+  if (parts.length === 3) return parts[2]+'/'+parts[1]+'/'+parts[0];
+  return s;
+}
+function fmesAbrev(s) {
+  if (!s) return '';
+  var m = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var parts = s.split('-');
+  return m[parseInt(parts[1],10)-1] || s;
+}
+function fmesNome(s) {
+  if (!s) return '—';
+  var m = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var parts = s.split('-');
+  return m[parseInt(parts[1],10)-1] || s;
+}
+
+function sitBadge(sit) {
+  if (!sit) return '<span class="badge badge--gray" style="font-size:.7rem">Pendente</span>';
+  var map = { 'OK':'badge--green','CH':'badge--blue','EM ATRASO':'badge--em-atraso','PARCELADO':'badge--parcelado' };
+  var cls = map[sit.toUpperCase()] || 'badge--gray';
+  return '<span class="badge '+cls+'" style="font-size:.7rem">'+sit+'</span>';
+}
+
+function renderEmpty(tbody, cols) {
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="'+cols+'" class="table__empty">Nenhum registro encontrado.</td></tr>';
+}
+
+// openModal/closeModal defined in lib/helpers.js
+
+function debounce(fn, delay) {
+  return function() {
+    clearTimeout(fn._t);
+    fn._t = setTimeout(fn, delay);
+  };
 }
