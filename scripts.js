@@ -104,38 +104,67 @@ function drawCVMensal(geral) {
   var maxVal = Math.max.apply(null, geral.map(function(r){ return Math.max(r.compras||0, r.vendas||0); }).concat([1]));
   var gw = chartW / geral.length;
   var bw = Math.min(gw*0.3, 22);
-  svg.innerHTML = gridLines(W,H,pL,pR,pT,pB);
+
+  // Limpa SVG e coloca gridlines via DOM
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  var gridHtml = gridLines(W,H,pL,pR,pT,pB);
+  var tmp = document.createElementNS('http://www.w3.org/2000/svg','g');
+  tmp.innerHTML = gridHtml;
+  while (tmp.firstChild) svg.appendChild(tmp.firstChild);
+
   geral.forEach(function(r,i){
     var cx  = pL + gw*i + gw/2;
     var mes = fmesAbrev(r.mes);
     var hC  = Math.max(((r.compras||0)/maxVal)*chartH, 2);
     var hV  = Math.max(((r.vendas||0)/maxVal)*chartH,  2);
     var lucro = (r.vendas||0)-(r.compras||0);
-    var rC = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rC.setAttribute('x', cx-bw-2); rC.setAttribute('y', pT+chartH-hC);
-    rC.setAttribute('width', bw);  rC.setAttribute('height', hC);
-    rC.setAttribute('fill','#ef4444'); rC.setAttribute('rx','3'); rC.setAttribute('opacity','.85');
-    rC.style.transition = 'opacity .15s';
-    rC.addEventListener('mouseenter', function(){ this.setAttribute('opacity','1'); });
-    rC.addEventListener('mouseleave', function(){ this.setAttribute('opacity','.85'); });
-    _tipHover(rC, '<strong>'+mes+'</strong><br>Compras: <b>'+fc(r.compras)+'</b>');
-    svg.appendChild(rC);
-    var rV = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rV.setAttribute('x', cx+2);    rV.setAttribute('y', pT+chartH-hV);
-    rV.setAttribute('width', bw);  rV.setAttribute('height', hV);
-    rV.setAttribute('fill','#10b981'); rV.setAttribute('rx','3'); rV.setAttribute('opacity','.85');
-    rV.style.transition = 'opacity .15s';
-    rV.addEventListener('mouseenter', function(){ this.setAttribute('opacity','1'); });
-    rV.addEventListener('mouseleave', function(){ this.setAttribute('opacity','.85'); });
-    _tipHover(rV, '<strong>'+mes+'</strong><br>Vendas: <b>'+fc(r.vendas)+'</b><br>Lucro: <b style="color:'+(lucro>=0?'#10b981':'#ef4444')+'">'+fc(lucro)+'</b>');
-    svg.appendChild(rV);
+
+    function mkBar(x, h, color, tipHtml) {
+      var el = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      el.setAttribute('x', x);           el.setAttribute('y', pT+chartH-h);
+      el.setAttribute('width', bw);      el.setAttribute('height', h);
+      el.setAttribute('fill', color);    el.setAttribute('rx', '3');
+      el.setAttribute('opacity', '.85'); el.style.transition = 'opacity .15s';
+      el.style.cursor = 'pointer';
+      el.addEventListener('mouseenter', function(){
+        this.setAttribute('opacity','1');
+        window._chartTip.show(tipHtml);
+      });
+      el.addEventListener('mouseleave', function(){
+        this.setAttribute('opacity','.85');
+        window._chartTip.hide();
+      });
+      svg.appendChild(el);
+    }
+
+    mkBar(cx-bw-2, hC, '#ef4444',
+      '<strong>'+mes+'</strong><br>🔴 Compras: <b>'+fc(r.compras)+'</b>');
+    mkBar(cx+2, hV, '#10b981',
+      '<strong>'+mes+'</strong><br>🟢 Vendas: <b>'+fc(r.vendas)+'</b><br>Lucro: <b style="color:'+(lucro>=0?'#10b981':'#ef4444')+'">'+fc(lucro)+'</b>');
+
     var txt = document.createElementNS('http://www.w3.org/2000/svg','text');
     txt.setAttribute('x', cx); txt.setAttribute('y', H-pB+14);
     txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-size','8');
     txt.setAttribute('fill','#6b7280'); txt.textContent = mes;
     svg.appendChild(txt);
   });
-  svg.innerHTML += legend(pL, H, pB, [{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'}]);
+
+  // Legenda via DOM (sem innerHTML)
+  var legItems = [{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'}];
+  var lx = pL;
+  legItems.forEach(function(it){
+    var rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', lx); rect.setAttribute('y', H-pB+22);
+    rect.setAttribute('width','8'); rect.setAttribute('height','8');
+    rect.setAttribute('fill', it.c); rect.setAttribute('rx','2');
+    svg.appendChild(rect);
+    var t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', lx+11); t.setAttribute('y', H-pB+30);
+    t.setAttribute('font-size','8'); t.setAttribute('fill','#6b7280');
+    t.textContent = it.l;
+    svg.appendChild(t);
+    lx += 55;
+  });
 }
 
 async function drawDonutDespesas() {
