@@ -836,3 +836,8 @@ tbody tr:hover { background: #fdfaf7; }
 .badge--pendente  { background: #fff7ed; color: #c2410c; }
 :root { --surface-alt: #f9fafb; }
 .hidden { display: none !important; }
+
+/* ── Filtro de Período — Relatórios ── */
+.rel-period-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius); padding: 5px 13px; font-size: .8rem; cursor: pointer; transition: all .15s; }
+.rel-period-btn:hover { border-color: var(--accent); color: var(--accent); }
+.rel-period-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
