@@ -99,21 +99,43 @@ function drawLucroMensal(geral) {
 function drawCVMensal(geral) {
   var svg = document.getElementById('chart-cv-mensal');
   if (!svg) return;
-  var W=400,H=200,pL=8,pR=8,pT=16,pB=28;
+  var W=400,H=200,pL=8,pR=8,pT=16,pB=36;
   var chartW=W-pL-pR, chartH=H-pT-pB;
   var maxVal = Math.max.apply(null, geral.map(function(r){ return Math.max(r.compras||0, r.vendas||0); }).concat([1]));
   var gw = chartW / geral.length;
   var bw = Math.min(gw*0.3, 22);
-  var html = gridLines(W,H,pL,pR,pT,pB);
+  svg.innerHTML = gridLines(W,H,pL,pR,pT,pB);
   geral.forEach(function(r,i){
-    var cx = pL + gw*i + gw/2;
-    var hC = ((r.compras||0)/maxVal)*chartH, hV = ((r.vendas||0)/maxVal)*chartH;
-    html += '<rect x="'+(cx-bw-2)+'" y="'+(pT+chartH-hC)+'" width="'+bw+'" height="'+hC+'" fill="#ef4444" rx="3" opacity=".85"/>';
-    html += '<rect x="'+(cx+2)+'" y="'+(pT+chartH-hV)+'" width="'+bw+'" height="'+hV+'" fill="#10b981" rx="3" opacity=".85"/>';
-    html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="8" fill="#6b7280">'+fmesAbrev(r.mes)+'</text>';
+    var cx  = pL + gw*i + gw/2;
+    var mes = fmesAbrev(r.mes);
+    var hC  = Math.max(((r.compras||0)/maxVal)*chartH, 2);
+    var hV  = Math.max(((r.vendas||0)/maxVal)*chartH,  2);
+    var lucro = (r.vendas||0)-(r.compras||0);
+    var rC = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rC.setAttribute('x', cx-bw-2); rC.setAttribute('y', pT+chartH-hC);
+    rC.setAttribute('width', bw);  rC.setAttribute('height', hC);
+    rC.setAttribute('fill','#ef4444'); rC.setAttribute('rx','3'); rC.setAttribute('opacity','.85');
+    rC.style.transition = 'opacity .15s';
+    rC.addEventListener('mouseenter', function(){ this.setAttribute('opacity','1'); });
+    rC.addEventListener('mouseleave', function(){ this.setAttribute('opacity','.85'); });
+    _tipHover(rC, '<strong>'+mes+'</strong><br>Compras: <b>'+fc(r.compras)+'</b>');
+    svg.appendChild(rC);
+    var rV = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rV.setAttribute('x', cx+2);    rV.setAttribute('y', pT+chartH-hV);
+    rV.setAttribute('width', bw);  rV.setAttribute('height', hV);
+    rV.setAttribute('fill','#10b981'); rV.setAttribute('rx','3'); rV.setAttribute('opacity','.85');
+    rV.style.transition = 'opacity .15s';
+    rV.addEventListener('mouseenter', function(){ this.setAttribute('opacity','1'); });
+    rV.addEventListener('mouseleave', function(){ this.setAttribute('opacity','.85'); });
+    _tipHover(rV, '<strong>'+mes+'</strong><br>Vendas: <b>'+fc(r.vendas)+'</b><br>Lucro: <b style="color:'+(lucro>=0?'#10b981':'#ef4444')+'">'+fc(lucro)+'</b>');
+    svg.appendChild(rV);
+    var txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', cx); txt.setAttribute('y', H-pB+14);
+    txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-size','8');
+    txt.setAttribute('fill','#6b7280'); txt.textContent = mes;
+    svg.appendChild(txt);
   });
-  html += legend(pL, H, pB, [{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'}]);
-  svg.innerHTML = html;
+  svg.innerHTML += legend(pL, H, pB, [{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'}]);
 }
 
 async function drawDonutDespesas() {
@@ -543,23 +565,39 @@ async function loadRelatorios() {
       var chartW=W-pL-pR, chartH=H-pT-pB;
       var maxVal = Math.max.apply(null, ativos.map(function(r){ return Math.max(r.compras||0, r.vendas||0); }).concat([1]));
       var gw = chartW/ativos.length;
-      var bw = Math.min(gw*0.25, 18);
-      var html = gridLines(W,H,pL,pR,pT,pB);
+      var bw = Math.min(gw*0.22, 16);
+      svgM.innerHTML = gridLines(W,H,pL,pR,pT,pB);
       ativos.forEach(function(r,i){
-        var cx = pL+gw*i+gw/2;
-        var hC = ((r.compras||0)/maxVal)*chartH, hV = ((r.vendas||0)/maxVal)*chartH;
-        var hL = Math.abs((r.lucro_liquido||0))/maxVal*chartH;
-        var ll = r.lucro_liquido||0;
-        html += '<rect x="'+(cx-bw*1.5-2)+'" y="'+(pT+chartH-hC)+'" width="'+bw+'" height="'+hC+'" fill="#ef4444" rx="2" opacity=".8"/>';
-        html += '<rect x="'+(cx-bw/2)+'" y="'+(pT+chartH-hV)+'" width="'+bw+'" height="'+hV+'" fill="#10b981" rx="2" opacity=".8"/>';
-        html += '<rect x="'+(cx+bw/2+2)+'" y="'+(ll>=0?pT+chartH-hL:pT+chartH)+'" width="'+bw+'" height="'+hL+'" fill="'+(ll>=0?'#3b82f6':'#f97316')+'" rx="2" opacity=".8"/>';
-        html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="8" fill="#6b7280">'+fmesAbrev(r.mes)+'</text>';
+        var cx  = pL+gw*i+gw/2;
+        var mes = fmesAbrev(r.mes);
+        var ll  = r.lucro_liquido||0;
+        var hC = Math.max(((r.compras||0)/maxVal)*chartH,2);
+        var hV = Math.max(((r.vendas||0)/maxVal)*chartH,2);
+        var hL = Math.max((Math.abs(ll)/maxVal)*chartH,2);
+        function mkRect(x,h,color,tip){
+          var el=document.createElementNS('http://www.w3.org/2000/svg','rect');
+          el.setAttribute('x',x); el.setAttribute('y',pT+chartH-h);
+          el.setAttribute('width',bw); el.setAttribute('height',h);
+          el.setAttribute('fill',color); el.setAttribute('rx','2'); el.setAttribute('opacity','.82');
+          el.style.transition='opacity .15s';
+          el.addEventListener('mouseenter',function(){this.setAttribute('opacity','1');});
+          el.addEventListener('mouseleave',function(){this.setAttribute('opacity','.82');});
+          _tipHover(el,'<strong>'+mes+'</strong><br>'+tip);
+          svgM.appendChild(el);
+        }
+        mkRect(cx-bw*1.6, hC, '#ef4444', 'Compras: <b>'+fc(r.compras)+'</b>');
+        mkRect(cx-bw*0.1, hV, '#10b981', 'Vendas: <b>'+fc(r.vendas)+'</b>');
+        mkRect(cx+bw*1.4,  hL, ll>=0?'#3b82f6':'#f97316', 'Lucro Líquido: <b>'+fc(ll)+'</b>');
+        var txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x',cx); txt.setAttribute('y',H-pB+14);
+        txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-size','8');
+        txt.setAttribute('fill','#6b7280'); txt.textContent=mes;
+        svgM.appendChild(txt);
       });
-      html += legend(pL,H,pB,[{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'},{c:'#3b82f6',l:'Lucro'}]);
-      svgM.innerHTML = html;
+      svgM.innerHTML += legend(pL,H,pB,[{c:'#ef4444',l:'Compras'},{c:'#10b981',l:'Vendas'},{c:'#3b82f6',l:'Lucro'}]);
     }
 
-    // Donut tipos de animal
+        // Donut tipos de animal
     var svgT = document.getElementById('rel-donut-tipo');
     var legT = document.getElementById('rel-donut-tipo-legend');
     if (svgT && legT) {
@@ -582,20 +620,32 @@ async function loadRelatorios() {
       var fornMap = {};
       ops.forEach(function(o){ if(o.fornecedor) fornMap[o.fornecedor]=(fornMap[o.fornecedor]||0)+(o.total_compra||0); });
       var top = Object.entries(fornMap).sort(function(a,b){ return b[1]-a[1]; }).slice(0,8);
-      var W=400,H=200,pL=8,pR=8,pT=16,pB=40;
+      var W=400,H=200,pL=8,pR=8,pT=16,pB=42;
       var chartW=W-pL-pR, chartH=H-pT-pB;
       var maxV = top[0] ? top[0][1] : 1;
       var bw = Math.min((chartW/top.length)*0.6, 36);
-      var html = gridLines(W,H,pL,pR,pT,pB);
+      svgF.innerHTML = gridLines(W,H,pL,pR,pT,pB);
       top.forEach(function(e,i){
         var cx = pL+(chartW/top.length)*i+(chartW/top.length/2);
-        var bh = (e[1]/maxV)*chartH;
-        html += '<rect x="'+(cx-bw/2)+'" y="'+(pT+chartH-bh)+'" width="'+bw+'" height="'+bh+'" fill="#3b82f6" rx="3" opacity=".85"/>';
+        var bh = Math.max((e[1]/maxV)*chartH, 2);
+        var rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        rect.setAttribute('x', cx-bw/2); rect.setAttribute('y', pT+chartH-bh);
+        rect.setAttribute('width', bw);  rect.setAttribute('height', bh);
+        rect.setAttribute('fill','#3b82f6'); rect.setAttribute('rx','3'); rect.setAttribute('opacity','.85');
+        rect.style.transition = 'opacity .15s';
+        rect.addEventListener('mouseenter', function(){ this.setAttribute('opacity','1'); });
+        rect.addEventListener('mouseleave', function(){ this.setAttribute('opacity','.85'); });
+        _tipHover(rect, '<strong>'+e[0]+'</strong><br>Volume: <b>'+fc(e[1])+'</b>');
+        svgF.appendChild(rect);
         var label = e[0].length>10 ? e[0].substr(0,9)+'…' : e[0];
-        html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="7" fill="#6b7280">'+label+'</text>';
+        var txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x', cx); txt.setAttribute('y', H-pB+14);
+        txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-size','7');
+        txt.setAttribute('fill','#6b7280'); txt.textContent = label;
+        svgF.appendChild(txt);
       });
-      svgF.innerHTML = html;
     }
+  
   } catch(e) {
     Helpers.showToast('Erro: ' + e.message, 'error');
   }
@@ -706,69 +756,217 @@ function bindForms() {
 // ══════════════════════════════════════════════════════════════════════════════
 // CHART HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
+// ── TOOLTIP GLOBAL ────────────────────────────────────────────────────────────
+(function() {
+  if (document.getElementById('chart-tooltip')) return;
+  var tip = document.createElement('div');
+  tip.id = 'chart-tooltip';
+  tip.style.cssText = [
+    'position:fixed','z-index:9999','pointer-events:none','opacity:0',
+    'background:rgba(17,24,39,.92)','color:#f9fafb','font-size:.78rem',
+    'font-family:var(--font-mono,monospace)','padding:7px 11px',
+    'border-radius:7px','box-shadow:0 4px 16px rgba(0,0,0,.25)',
+    'transition:opacity .12s','white-space:nowrap','max-width:220px',
+    'line-height:1.5'
+  ].join(';');
+  document.body.appendChild(tip);
+  document.addEventListener('mousemove', function(e){
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY - 36) + 'px';
+  });
+  window._chartTip = {
+    show: function(html) { tip.innerHTML = html; tip.style.opacity = '1'; },
+    hide: function()     { tip.style.opacity = '0'; },
+  };
+})();
+
+function _tipHover(el, html) {
+  el.style.cursor = 'pointer';
+  el.addEventListener('mouseenter', function(){ window._chartTip.show(html); });
+  el.addEventListener('mouseleave', function(){ window._chartTip.hide(); });
+}
+
 function drawBarChart(svg, vals, labels, colorFn) {
   var W=400,H=200,pL=8,pR=8,pT=16,pB=28;
   var chartW=W-pL-pR, chartH=H-pT-pB;
   var maxVal = Math.max.apply(null, vals.map(Math.abs).concat([1]));
   var bw = Math.min((chartW/vals.length)*0.6, 32);
-  var html = gridLines(W,H,pL,pR,pT,pB);
+  svg.innerHTML = gridLines(W,H,pL,pR,pT,pB);
+
   vals.forEach(function(v,i){
     var cx = pL+(chartW/vals.length)*i+(chartW/vals.length/2);
-    var bh = (Math.abs(v)/maxVal)*chartH;
+    var bh = Math.max((Math.abs(v)/maxVal)*chartH, 2);
     var color = typeof colorFn === 'function' ? colorFn(v) : colorFn;
-    html += '<rect x="'+(cx-bw/2)+'" y="'+(pT+chartH-bh)+'" width="'+bw+'" height="'+bh+'" fill="'+color+'" rx="3" opacity=".85"/>';
-    html += '<text x="'+cx+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="8" fill="#6b7280">'+(labels[i]||'')+'</text>';
+
+    // Barra
+    var rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',     cx - bw/2);
+    rect.setAttribute('y',     pT + chartH - bh);
+    rect.setAttribute('width', bw);
+    rect.setAttribute('height',bh);
+    rect.setAttribute('fill',  color);
+    rect.setAttribute('rx',    '3');
+    rect.setAttribute('opacity','0.85');
+    rect.style.transition = 'opacity .15s';
+    rect.addEventListener('mouseenter', function(){ this.setAttribute('opacity','1'); });
+    rect.addEventListener('mouseleave', function(){ this.setAttribute('opacity','0.85'); });
+    _tipHover(rect, '<strong>'+(labels[i]||'')+'</strong><br>'+fc(v));
+    svg.appendChild(rect);
+
+    // Label eixo X
+    var txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', cx);
+    txt.setAttribute('y', H - pB + 14);
+    txt.setAttribute('text-anchor','middle');
+    txt.setAttribute('font-size','8');
+    txt.setAttribute('fill','#6b7280');
+    txt.textContent = labels[i] || '';
+    svg.appendChild(txt);
+
+    // Valor acima da barra (só se >= 4px)
+    if (bh >= 14) {
+      var vl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      vl.setAttribute('x', cx);
+      vl.setAttribute('y', pT + chartH - bh - 3);
+      vl.setAttribute('text-anchor','middle');
+      vl.setAttribute('font-size','7');
+      vl.setAttribute('fill', color);
+      vl.setAttribute('font-weight','700');
+      vl.setAttribute('opacity','0');
+      vl.textContent = fcShort(v);
+      vl.style.transition = 'opacity .15s';
+      rect.addEventListener('mouseenter', function(){ vl.setAttribute('opacity','1'); });
+      rect.addEventListener('mouseleave', function(){ vl.setAttribute('opacity','0'); });
+      svg.appendChild(vl);
+    }
   });
-  svg.innerHTML = html;
 }
 
 function drawLineChart(svg, vals, labels, color) {
   var W=400,H=200,pL=40,pR=12,pT=16,pB=28;
   var chartW=W-pL-pR, chartH=H-pT-pB;
   var maxVal = Math.max.apply(null, vals.concat([1]));
-  var html = gridLines(W,H,pL,pR,pT,pB);
+  svg.innerHTML = gridLines(W,H,pL,pR,pT,pB);
+
   var pts = vals.map(function(v,i){
-    return { x: pL+(i/(vals.length-1||1))*chartW, y: pT+chartH*(1-v/maxVal) };
+    return { x: pL+(i/(vals.length-1||1))*chartW, y: pT+chartH*(1-v/maxVal), v:v, l:labels[i] };
   });
+
   if (pts.length > 1) {
-    var area = 'M'+pts[0].x+','+(pT+chartH)+' '+pts.map(function(p){ return 'L'+p.x+','+p.y; }).join(' ')+' L'+pts[pts.length-1].x+','+(pT+chartH)+' Z';
-    html += '<path d="'+area+'" fill="'+color+'" opacity=".12"/>';
-    var line = pts.map(function(p,i){ return (i===0?'M':'L')+p.x+','+p.y; }).join(' ');
-    html += '<path d="'+line+'" stroke="'+color+'" stroke-width="2.5" fill="none" stroke-linejoin="round"/>';
+    var area = document.createElementNS('http://www.w3.org/2000/svg','path');
+    var areaD = 'M'+pts[0].x+','+(pT+chartH)+' '+pts.map(function(p){ return 'L'+p.x+','+p.y; }).join(' ')+' L'+pts[pts.length-1].x+','+(pT+chartH)+' Z';
+    area.setAttribute('d', areaD);
+    area.setAttribute('fill', color);
+    area.setAttribute('opacity', '0.12');
+    svg.appendChild(area);
+
+    var line = document.createElementNS('http://www.w3.org/2000/svg','path');
+    line.setAttribute('d', pts.map(function(p,i){ return (i===0?'M':'L')+p.x+','+p.y; }).join(' '));
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', '2.5');
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(line);
   }
-  pts.forEach(function(p,i){
-    html += '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="'+color+'" stroke="#fff" stroke-width="2"/>';
-    html += '<text x="'+p.x+'" y="'+(H-pB+14)+'" text-anchor="middle" font-size="9" fill="#6b7280">'+(labels[i]||'')+'</text>';
+
+  pts.forEach(function(p){
+    // Área de hover invisível (maior que o círculo)
+    var hit = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    hit.setAttribute('cx', p.x); hit.setAttribute('cy', p.y);
+    hit.setAttribute('r', '12'); hit.setAttribute('fill', 'transparent');
+    _tipHover(hit, '<strong>'+p.l+'</strong><br>'+fc(p.v));
+    svg.appendChild(hit);
+
+    var circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y);
+    circle.setAttribute('r', '4'); circle.setAttribute('fill', color);
+    circle.setAttribute('stroke', '#fff'); circle.setAttribute('stroke-width', '2');
+    circle.style.transition = 'r .15s';
+    hit.addEventListener('mouseenter', function(){ circle.setAttribute('r','6'); });
+    hit.addEventListener('mouseleave', function(){ circle.setAttribute('r','4'); });
+    svg.appendChild(circle);
+
+    var txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', p.x); txt.setAttribute('y', p.y - 10);
+    txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-size','7');
+    txt.setAttribute('fill', color); txt.setAttribute('font-weight','700');
+    txt.setAttribute('opacity','0');
+    txt.textContent = fcShort(p.v);
+    txt.style.transition = 'opacity .15s';
+    hit.addEventListener('mouseenter', function(){ txt.setAttribute('opacity','1'); });
+    hit.addEventListener('mouseleave', function(){ txt.setAttribute('opacity','0'); });
+    svg.appendChild(txt);
+
+    var lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', p.x); lbl.setAttribute('y', H - pB + 14);
+    lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('font-size','9');
+    lbl.setAttribute('fill','#6b7280');
+    lbl.textContent = p.l;
+    svg.appendChild(lbl);
   });
-  svg.innerHTML = html;
 }
 
 function drawDonut(svg, leg, totals) {
   var entries = Object.entries(totals).sort(function(a,b){ return b[1]-a[1]; }).slice(0,7);
   var total = entries.reduce(function(s,e){ return s+e[1]; }, 0);
   var colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
-  var cx=75,cy=75,r=65,ri=32;
-  if (!total) { svg.innerHTML='<text x="75" y="80" text-anchor="middle" font-size="11" fill="#9ca3af">Sem dados</text>'; leg.innerHTML=''; return; }
-  var start = -Math.PI/2, html='';
+  var CX=75, CY=75, R=65, Ri=32;
+  svg.innerHTML = '';
+  if (!total) {
+    var nt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    nt.setAttribute('x','75'); nt.setAttribute('y','80'); nt.setAttribute('text-anchor','middle');
+    nt.setAttribute('font-size','11'); nt.setAttribute('fill','#9ca3af');
+    nt.textContent = 'Sem dados'; svg.appendChild(nt); leg.innerHTML=''; return;
+  }
+  var start = -Math.PI/2;
   entries.forEach(function(e,i){
     var angle = (e[1]/total)*2*Math.PI;
-    var end = start+angle;
-    var x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start);
-    var x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
-    var xi1=cx+ri*Math.cos(start),yi1=cy+ri*Math.sin(start);
-    var xi2=cx+ri*Math.cos(end),yi2=cy+ri*Math.sin(end);
-    var lg = angle>Math.PI?1:0;
-    html += '<path d="M'+xi1+','+yi1+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' L'+xi2+','+yi2+' A'+ri+','+ri+' 0 '+lg+',0 '+xi1+','+yi1+'" fill="'+colors[i%colors.length]+'" opacity=".9"/>';
+    var end   = start + angle;
+    var x1=CX+R*Math.cos(start),  y1=CY+R*Math.sin(start);
+    var x2=CX+R*Math.cos(end),    y2=CY+R*Math.sin(end);
+    var xi1=CX+Ri*Math.cos(start),yi1=CY+Ri*Math.sin(start);
+    var xi2=CX+Ri*Math.cos(end),  yi2=CY+Ri*Math.sin(end);
+    var lg = angle > Math.PI ? 1 : 0;
+    var col = colors[i % colors.length];
+    var pct = ((e[1]/total)*100).toFixed(1);
+    var d = 'M'+xi1+','+yi1+' L'+x1+','+y1+' A'+R+','+R+' 0 '+lg+',1 '+x2+','+y2+' L'+xi2+','+yi2+' A'+Ri+','+Ri+' 0 '+lg+',0 '+xi1+','+yi1;
+    var path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', col);
+    path.setAttribute('opacity', '0.9');
+    path.style.transition = 'transform .15s, opacity .15s';
+    path.style.transformOrigin = CX+'px '+CY+'px';
+    path.addEventListener('mouseenter', function(){
+      this.style.transform = 'scale(1.06)';
+      this.setAttribute('opacity','1');
+      window._chartTip.show('<strong>'+e[0]+'</strong><br>'+fc(e[1])+'<br><span style="color:#9ca3af">'+pct+'% do total</span>');
+    });
+    path.addEventListener('mouseleave', function(){
+      this.style.transform = 'scale(1)';
+      this.setAttribute('opacity','0.9');
+      window._chartTip.hide();
+    });
+    svg.appendChild(path);
     start = end;
   });
-  svg.innerHTML = html;
+
   leg.innerHTML = entries.map(function(e,i){
     var pct = ((e[1]/total)*100).toFixed(0);
     var label = e[0].length>16 ? e[0].substr(0,15)+'…' : e[0];
     return '<div class="legend-item"><div class="legend-dot" style="background:'+colors[i%colors.length]+'"></div>'+
-      '<span style="color:var(--text-muted);flex:1">'+label+'</span>'+
+      '<span style="color:var(--text-muted);flex:1" title="'+e[0]+'">'+label+'</span>'+
       '<strong style="padding-left:6px">'+pct+'%</strong></div>';
   }).join('');
+}
+
+// Valor compacto para labels dentro do gráfico (ex: R$81,4K)
+function fcShort(v) {
+  if (!v && v !== 0) return '';
+  var abs = Math.abs(v);
+  var prefix = v < 0 ? '-' : '';
+  if (abs >= 1000000) return prefix + 'R$' + (abs/1000000).toFixed(1) + 'M';
+  if (abs >= 1000)    return prefix + 'R$' + (abs/1000).toFixed(1) + 'K';
+  return prefix + 'R$' + abs.toFixed(0);
 }
 
 function gridLines(W,H,pL,pR,pT,pB) {
