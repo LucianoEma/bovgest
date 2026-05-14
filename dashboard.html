@@ -332,12 +332,33 @@
         <div><h2 class="page-title">Relatórios</h2><p class="page-subtitle">Indicadores e análises gerenciais</p></div>
         <button class="btn btn-secondary btn-sm" onclick="loadRelatorios()">↻ Atualizar</button>
       </div>
+
+      <!-- Filtro de Período -->
+      <div class="rel-filter-bar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);">
+        <span style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">📅 Período:</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1">
+          <button class="btn btn-sm rel-period-btn active" id="rp-geral"      onclick="setRelPeriodo('geral')">Geral (2025)</button>
+          <button class="btn btn-sm rel-period-btn"        id="rp-mesatual"   onclick="setRelPeriodo('mesatual')">Mês Atual</button>
+          <button class="btn btn-sm rel-period-btn"        id="rp-mespas"     onclick="setRelPeriodo('mespas')">Mês Passado</button>
+          <button class="btn btn-sm rel-period-btn"        id="rp-trim"       onclick="setRelPeriodo('trim')">Trimestre</button>
+          <button class="btn btn-sm rel-period-btn"        id="rp-personaliz" onclick="setRelPeriodo('personaliz')">Personalizado</button>
+        </div>
+        <div id="rel-custom-range" style="display:none;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="form-input" type="month" id="rel-de"  style="width:150px" placeholder="De" />
+          <span style="color:var(--text-muted)">→</span>
+          <input class="form-input" type="month" id="rel-ate" style="width:150px" placeholder="Até" />
+          <button class="btn btn-primary btn-sm" onclick="loadRelatorios()">Aplicar</button>
+        </div>
+        <span id="rel-periodo-label" style="font-size:.78rem;color:var(--text-muted);white-space:nowrap"></span>
+      </div>
+
       <div class="kpi-row" id="rel-kpis"></div>
+
       <div class="charts-grid">
-        <div class="chart-card">
+        <div class="chart-card" style="overflow:visible">
           <div class="chart-card__title">📊 Resultado por Mês</div>
-          <div class="chart-card__sub">Compras, Vendas e Lucro</div>
-          <div class="chart-wrap"><svg id="rel-bar-mensal" class="bar-chart" viewBox="0 0 400 200" preserveAspectRatio="none"></svg></div>
+          <div class="chart-card__sub" id="rel-bar-sub">Compras, Vendas e Lucro</div>
+          <div class="chart-wrap" style="height:220px"><svg id="rel-bar-mensal" class="bar-chart" viewBox="0 0 400 220" preserveAspectRatio="none" style="overflow:visible"></svg></div>
         </div>
         <div class="chart-card">
           <div class="chart-card__title">🥧 Tipos de Animal</div>
@@ -351,7 +372,7 @@
         </div>
         <div class="chart-card">
           <div class="chart-card__title">📉 Evolução de Despesas</div>
-          <div class="chart-card__sub">Por categoria ao longo do ano</div>
+          <div class="chart-card__sub">Por categoria ao longo do período</div>
           <div class="chart-wrap"><svg id="rel-line-desp" class="bar-chart" viewBox="0 0 400 200" preserveAspectRatio="none"></svg></div>
         </div>
         <div class="chart-card">
