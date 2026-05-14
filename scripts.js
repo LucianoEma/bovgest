@@ -180,9 +180,78 @@ async function drawDonutDespesas() {
 function drawQtGado(geral) {
   var svg = document.getElementById('chart-qt-gado');
   if (!svg) return;
-  var vals = geral.map(function(r){ return r.qt_gado || 0; });
+  var W=400,H=200,pL=40,pR=12,pT=16,pB=28;
+  var chartW=W-pL-pR, chartH=H-pT-pB;
+  var vals   = geral.map(function(r){ return r.qt_gado || 0; });
   var labels = geral.map(function(r){ return fmesAbrev(r.mes); });
-  drawLineChart(svg, vals, labels, '#f59e0b');
+  var maxVal = Math.max.apply(null, vals.concat([1]));
+  var color  = '#f59e0b';
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  // Gridlines
+  var tmp = document.createElementNS('http://www.w3.org/2000/svg','g');
+  tmp.innerHTML = gridLines(W,H,pL,pR,pT,pB);
+  while (tmp.firstChild) svg.appendChild(tmp.firstChild);
+
+  var pts = vals.map(function(v,i){
+    return { x: pL+(i/(vals.length-1||1))*chartW, y: pT+chartH*(1-v/maxVal), v:v, l:labels[i] };
+  });
+
+  // Área
+  if (pts.length > 1) {
+    var area = document.createElementNS('http://www.w3.org/2000/svg','path');
+    area.setAttribute('d', 'M'+pts[0].x+','+(pT+chartH)+' '+pts.map(function(p){ return 'L'+p.x+','+p.y; }).join(' ')+' L'+pts[pts.length-1].x+','+(pT+chartH)+' Z');
+    area.setAttribute('fill', color); area.setAttribute('opacity','0.12');
+    svg.appendChild(area);
+    var line = document.createElementNS('http://www.w3.org/2000/svg','path');
+    line.setAttribute('d', pts.map(function(p,i){ return (i===0?'M':'L')+p.x+','+p.y; }).join(' '));
+    line.setAttribute('stroke', color); line.setAttribute('stroke-width','2.5');
+    line.setAttribute('fill','none'); line.setAttribute('stroke-linejoin','round');
+    svg.appendChild(line);
+  }
+
+  pts.forEach(function(p){
+    // Área invisível de hover
+    var hit = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    hit.setAttribute('cx', p.x); hit.setAttribute('cy', p.y);
+    hit.setAttribute('r','12'); hit.setAttribute('fill','transparent');
+    hit.style.cursor = 'pointer';
+    hit.addEventListener('mouseenter', function(){
+      circle.setAttribute('r','6');
+      vl.setAttribute('opacity','1');
+      window._chartTip.show('<strong>'+p.l+'</strong><br>🐄 Quantidade: <b>'+p.v+' cabeças</b>');
+    });
+    hit.addEventListener('mouseleave', function(){
+      circle.setAttribute('r','4');
+      vl.setAttribute('opacity','0');
+      window._chartTip.hide();
+    });
+
+    var circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y);
+    circle.setAttribute('r','4'); circle.setAttribute('fill', color);
+    circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width','2');
+    circle.style.transition = 'r .15s';
+
+    // Label valor acima do ponto
+    var vl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    vl.setAttribute('x', p.x); vl.setAttribute('y', p.y - 8);
+    vl.setAttribute('text-anchor','middle'); vl.setAttribute('font-size','8');
+    vl.setAttribute('fill', color); vl.setAttribute('font-weight','700');
+    vl.setAttribute('opacity','0'); vl.style.transition = 'opacity .15s';
+    vl.textContent = p.v + ' cab';
+
+    // Label eixo X
+    var lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', p.x); lbl.setAttribute('y', H-pB+14);
+    lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('font-size','9');
+    lbl.setAttribute('fill','#6b7280'); lbl.textContent = p.l;
+
+    svg.appendChild(vl);
+    svg.appendChild(circle);
+    svg.appendChild(hit);
+    svg.appendChild(lbl);
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
